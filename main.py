@@ -30,3 +30,4 @@ print(f"When the inputs are {x} and the weights are {weights}, the neuron output
 # Final Explanation: 1) Numpy is imported so we can better do mathematical operations with arrays and equations. 2) We define the sigmoid function with x as our argument (x will be the input later on). 3) We initialize the Neuron class with its respective traits (weights, bias). 4) We define the feedforward function with the arguments (self and inputs). This will produce the dot product of the inputs and then put that value through the sigmoid function. 5) After all of that, the specific values that will be used in the neuron are defined and passed through. 6) The final line means that the final value (in range 0-1) is printed in the console. 
 
 #CHANGESSSSS newwww
+#hello
