@@ -1,113 +1,107 @@
 import numpy as np
 
-# Define the sigmoid activation function:
+# Define the sigmoid activation function and its derivative:
 def sigmoid(x):
     return 1 / (1 + np.exp(-np.clip(x, -500, 500)))
 
-def deriv_sig(x):
-    fx = sigmoid(x)
-    return fx * (1 - fx)
+def deriv_sig(activated):
+    # Assumes the input is already the output of the sigmoid function.
+    return activated * (1 - activated)
 
 def mse_loss(y_true, y_pred):
-  # y_true and y_pred are numpy arrays of the same length.
-  return ((y_true - y_pred) ** 2).mean()
+    return ((y_true - y_pred) ** 2).mean()
 
 class Neuron:
-    def __init__(self, weights, bias):
-        self.weights = weights
-        self.bias = bias
+    def __init__(self, num_inputs):
+        self.weights = np.random.normal(size=num_inputs)
+        self.bias = np.random.normal()
     
-    # Define the method for computing the output of the neuron:
-    def __call__(self, x):      #__call__ makes it so that the neuron class can be called later on as a function
-        # Uses np.dot to calculate dot product of inputs and weights. Adds the bias.
+    def __call__(self, x):
         total = np.dot(self.weights, x) + self.bias
-        sig_val = sigmoid(total)
-        return sig_val
+        return sigmoid(total)
 
-# Initialize the neuron class and its variables (weights and bias):
 class NeuralNetwork:
-    def __init__(self):
-        #create each neuron with independent weights and biases
-        self.h1 = Neuron([np.random.normal(), np.random.normal()], np.random.normal())
-        self.h2 = Neuron([np.random.normal(), np.random.normal()], np.random.normal())
-        self.o1 = Neuron([np.random.normal(), np.random.normal()], np.random.normal())
+    def __init__(self, input_size, hidden_size=2):
+        self.hidden_layer = [Neuron(input_size) for _ in range(hidden_size)]
+        self.output_neuron = Neuron(hidden_size)
     
     def feedforward(self, x):
-        out_h1 = self.h1(x)
-        out_h2 = self.h2(x)
-        out_o1 = self.o1([out_h1, out_h2])
-        return out_o1
+        hidden_outputs = np.array([neuron(x) for neuron in self.hidden_layer])
+        return self.output_neuron(hidden_outputs)
     
-    #function to train network
-    def train(self, data, all_y_trues):
-        learn_rate = 0.1
-        epochs = 1000
-
+    def train(self, data, all_y_trues, learn_rate=0.05, epochs=1000):
         for epoch in range(epochs):
             for x, y_true in zip(data, all_y_trues):
-                # Forward pass
-                raw_h1 = self.h1(x)
-                raw_h2 = self.h2(x)
-                o1 = self.o1([raw_h1, raw_h2])
+                hidden_outputs = np.array([neuron(x) for neuron in self.hidden_layer])
+                y_pred = self.output_neuron(hidden_outputs)
 
-                # Set the outcome of network to predicted value
-                y_pred = o1
+                # Calculate gradients for the output neuron
+                output_grad = 2 * (y_pred - y_true) * deriv_sig(y_pred)
+                self.output_neuron.weights -= learn_rate * output_grad * hidden_outputs
+                self.output_neuron.bias -= learn_rate * output_grad
 
-                # Neuron o1
-                d_L_d_ypred = -2 * (y_true - y_pred)
-                d_ypred_d_w5 = raw_h1 * deriv_sig(o1)
-                d_ypred_d_w6 = raw_h2 * deriv_sig(o1)
-                d_ypred_d_b3 = deriv_sig(o1)
+                # Backpropagate gradients to the hidden layer neurons
+                hidden_grads = [
+                    output_grad * self.output_neuron.weights[i] * deriv_sig(hidden_outputs[i])
+                    for i in range(len(self.hidden_layer))
+                ]
+                for i, neuron in enumerate(self.hidden_layer):
+                    neuron.weights -= learn_rate * hidden_grads[i] * x
+                    neuron.bias -= learn_rate * hidden_grads[i]
 
-                d_ypred_d_h1 = self.o1.weights[0] * deriv_sig(o1)
-                d_ypred_d_h2 = self.o1.weights[1] * deriv_sig(o1)
-
-                # Neuron h1
-                d_h1_d_w1 = x[0] * deriv_sig(raw_h1)
-                d_h1_d_w2 = x[1] * deriv_sig(raw_h1)
-                d_h1_d_b1 = deriv_sig(raw_h1)
-
-                # Neuron h2
-                d_h2_d_w3 = x[0] * deriv_sig(raw_h2)
-                d_h2_d_w4 = x[1] * deriv_sig(raw_h2)
-                d_h2_d_b2 = deriv_sig(raw_h2)
-
-                # Update weights and biases
-                # Neuron o1
-                self.o1.weights[0] -= learn_rate * d_L_d_ypred * d_ypred_d_w5
-                self.o1.weights[1] -= learn_rate * d_L_d_ypred * d_ypred_d_w6
-                self.o1.bias -= learn_rate * d_L_d_ypred * d_ypred_d_b3
-
-                # Neuron h1
-                self.h1.weights[0] -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_w1
-                self.h1.weights[1] -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_w2
-                self.h1.bias -= learn_rate * d_L_d_ypred * d_ypred_d_h1 * d_h1_d_b1
-
-                # Neuron h2
-                self.h2.weights[0] -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_w3
-                self.h2.weights[1] -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_w4
-                self.h2.bias -= learn_rate * d_L_d_ypred * d_ypred_d_h2 * d_h2_d_b2
-
-                #calculate the total loss at the end of each epoch
             if epoch % 100 == 0:
                 y_preds = np.apply_along_axis(self.feedforward, 1, data)
                 loss = mse_loss(all_y_trues, y_preds)
-                print("Epoch %d loss: %.3f" % (epoch, loss))
-     
-#define dataset
-data = np.array([
-    [-2,-1],    #alice
-    [25,6],     #bob
-    [17,4],     #charlie
-    [-15,-6],   #diana
-])
-all_y_trues = np.array([
-    1,  #Alice
-    0,  #bob
-    0,  #charlie
-    1,  #diana
-])
+                print(f"Epoch {epoch} loss: {loss:.6f}")
 
-#train the network
-network = NeuralNetwork()
-network.train(data, all_y_trues)
+if __name__ == '__main__':
+    # User input for network parameters and training data
+    input_size = int(input("Enter the number of inputs per sample: "))
+    hidden_size = int(input("Enter the number of hidden neurons: "))
+    learn_rate = float(input("Enter the learning rate (e.g., 0.05): "))
+    epochs = int(input("Enter the number of epochs for training: "))
+
+    # Get training data block input
+    print("\nPaste your training data here.")
+    print("Each line should represent a sample with comma-separated values.")
+    print("When you're done, enter an empty line to finish:")
+    data_lines = []
+    while True:
+        line = input()
+        if line.strip() == "":
+            break
+        data_lines.append(line)
+    data = np.array([[float(value.strip()) for value in line.split(',')] for line in data_lines])
+    
+    # Get labels as a single comma-separated line
+    labels_input = input("\nPaste the labels for each sample, separated by commas: ")
+    labels = np.array([float(label.strip()) for label in labels_input.split(',')])
+    
+    # Create and train the neural network
+    network = NeuralNetwork(input_size, hidden_size)
+    network.train(data, labels, learn_rate=learn_rate, epochs=epochs)
+    print("\nTraining complete!")
+    
+    # Ask the user if they'd like to test the model
+    test_choice = input("Would you like to test the model with new data? (y/n): ").strip().lower()
+    if test_choice == 'y':
+        print("\nPaste your test data here (each line is a sample, comma-separated values).")
+        print("When you're done, enter an empty line to finish:")
+        test_data_lines = []
+        while True:
+            line = input()
+            if line.strip() == "":
+                break
+            test_data_lines.append(line)
+        test_data = np.array([[float(value.strip()) for value in line.split(',')] for line in test_data_lines])
+        
+        print("\nModel predictions:")
+        for sample in test_data:
+            prediction = network.feedforward(sample)
+            if prediction >= 0.5:
+                print("Input:", sample, "Prediction: Dead")
+            else:
+                print("Input:", sample, "Prediction: Survived")
+
+    else:
+        print("Okay, testing skipped. Good job on training your model!")
