@@ -107,10 +107,7 @@ Output Neuron:
 Put through sigmoid activation function:  
 ![o one](https://latex.codecogs.com/png.image?\inline&space;\large&space;\dpi{110}\bg{black}o_{1}) = ![0.7216](https://latex.codecogs.com/png.image?\inline&space;\large&space;\dpi{110}\bg{black}0.7216) 
 
-You have just learned a simple neural network! Not so bad right? Now let's dive into how to code it in Python using just NumPy.
-
-### Coding the Network
-When coding a network of neurons, it's best to use Python's Object-Oriented Programming capabilities. 
+You have just learned a simple neural network! Not so bad right? 
 
 
 
