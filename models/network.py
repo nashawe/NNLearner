@@ -1,7 +1,7 @@
 import numpy as np
-from neuron import Neuron
-from activation import sigmoid, deriv_sig
-from loss import mse_loss
+from models.neuron import Neuron
+from utils.activation import sigmoid, deriv_sig
+from utils.loss import mse_loss
 
 class NeuralNetwork:
     def __init__(self, input_size, hidden_size=2):

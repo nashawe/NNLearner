@@ -1,8 +1,11 @@
 import numpy as np
 
 def sigmoid(x):
-    return 1 / (1 + np.exp(-np.clip(x, -500, 500)))
+    x = np.clip(x, -500, 500)  # Prevent overflow
+    return 1 / (1 + np.exp(-x))
 
-def deriv_sig(activated):
-    # Assumes the input is already the output of the sigmoid function.
-    return activated * (1 - activated)
+def deriv_sig(x):
+    sig_x = sigmoid(x)  # Ensure x is passed through sigmoid first
+    return sig_x * (1 - sig_x)
+
+

@@ -1,5 +1,5 @@
 import numpy as np
-from network import NeuralNetwork
+from models.network import NeuralNetwork
 
 if __name__ == '__main__':
     # User input for network parameters and training data
@@ -46,8 +46,8 @@ if __name__ == '__main__':
         for sample in test_data:
             prediction = network.feedforward(sample)
             if prediction >= 0.5:
-                print("Input:", sample, "Prediction: Dead")
+                print("Input:", sample, "Prediction: 1")
             else:
-                print("Input:", sample, "Prediction: Survived")
+                print("Input:", sample, "Prediction: 0")
     else:
         print("Okay, testing skipped. Good job on training your model!")
