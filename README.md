@@ -31,7 +31,7 @@ This project currently has only one python file: `neural_network.py`.
    ```
 3. Run the script:
 ```bash
-   python training_network.py
+   python main.py
 ```
 5. Follow the prompts in the console to give the model data and customize it.
 
