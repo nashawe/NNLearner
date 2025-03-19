@@ -4,6 +4,7 @@ from models.network import NeuralNetwork
 if __name__ == '__main__':
     # User input for network parameters and training data
     input_size = int(input("Enter the number of inputs per sample: "))
+    num_layers = int(input("Enter the number of hidden layers: "))
     hidden_size = int(input("Enter the number of hidden neurons: "))
     learn_rate = float(input("Enter the learning rate (e.g., 0.05): "))
     epochs = int(input("Enter the number of epochs for training: "))
@@ -25,7 +26,7 @@ if __name__ == '__main__':
     labels = np.array([float(label.strip()) for label in labels_input.split(',')])
     
     # Create and train the neural network
-    network = NeuralNetwork(input_size, hidden_size)
+    network = NeuralNetwork(input_size, hidden_size, num_layers)
     network.train(data, labels, learn_rate=learn_rate, epochs=epochs)
     print("\nTraining complete!")
     

@@ -1,2 +1,6 @@
 __pycache__/
 .DS_Store
+test_features
+test_labels
+training_features
+training_labels
