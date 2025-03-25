@@ -4,7 +4,14 @@ from utils.activation import sigmoid, deriv_sig
 from utils.loss import mse_loss
 
 class NeuralNetwork:
-    def __init__(self, input_size, hidden_size, num_layers):
+    def __init__(self, input_size, hidden_size, num_layers, config):
+        self.hidden_activation = config["hidden_activation"]
+        self.hidden_deriv = config["hidden_deriv"]
+        self.output_activation = config["output_activation"]
+        self.output_deriv = config["output_deriv"]
+        self.loss = config["loss"]
+        self.loss_grad = config["loss_grad"]
+
         # Build hidden layers
         self.hidden_layers = []
         prev_size = input_size
@@ -24,10 +31,12 @@ class NeuralNetwork:
         for layer in self.hidden_layers: #this code happens for each layer in the list of hidden layers.
             new_x = [] #creates a list of outputs from each neuron
             for neuron in layer:
-                new_x.append(neuron(x)) #adds each neurons output to list of outputs
+                z = np.dot(neuron.weights, x) + neuron.bias
+                new_x.append(self.hidden_activation(z)) #adds each neurons output to list of outputs
             x = new_x
         # Finally pass the result to the output neuron
-        return self.output_neuron(x)
+        z_out = np.dot(self.output_neuron.weights, x) + self.output_neuron.bias
+        return self.output_activation(z_out)
 
     def train(self, data, all_y_trues, learn_rate=0.05, epochs=1000):
         for epoch in range(epochs + 1):
@@ -37,20 +46,26 @@ class NeuralNetwork:
                 for layer in self.hidden_layers: #for each layer in the list of hidden layers:
                     layer_output = [] # creates blank list of neuron outputs for each layer.
                     for neuron in layer: #for each neuron in the individual layer.
-                        layer_output.append(neuron(activations[-1])) #adds the output of each neuron to the list of neuron outputs for that layer. Also, each neuron takes the input of whatever the previous layer outputted (activations[-1]).
-                    activations.append(layer_output) #adds the output of the layer to activations which will be used in the next iteration (next layer).
+                        z = np.dot(neuron.weights, activations[-1]) + neuron.bias
+                        a = self.hidden_activation(z)
+                        layer_output.append(a)
+                    activations.append(layer_output)
 
                 # Output neuron forward pass
-                y_pred = self.output_neuron(activations[-1])
+                z_out = np.dot(self.output_neuron.weights, activations[-1]) + self.output_neuron.bias
+                y_pred = self.output_activation(z_out)
+
 
                 # 1) Compute error and gradient at output
-                error = 2 * (y_pred - y_true)
-                dZ_out = error * deriv_sig(y_pred)
+                error = self.loss_grad(y_pred, y_true)
+                dZ_out = error * self.output_deriv(z_out)
+
 
                 # 2) Update the output neuron (weights and bias)
                 for weight_i in range(len(self.output_neuron.weights)):
                     self.output_neuron.weights[weight_i] -= learn_rate * dZ_out * activations[-1][weight_i]
                 self.output_neuron.bias -= learn_rate * dZ_out
+
 
                 # 3) Prepare gradient for the hidden layer below
                 grad = [dZ_out * w for w in self.output_neuron.weights]
@@ -64,7 +79,7 @@ class NeuralNetwork:
                     new_grad = np.zeros_like(layer_input, dtype=np.float64) #ensures that new grad is the same size as layer_input so we can do element wise operations.
 
                     for j, neuron in enumerate(layer): #for each neuron in the current layer
-                        dZ_hidden = grad[j] * deriv_sig(layer_output[j]) 
+                        dZ_hidden = grad[j] * self.hidden_deriv(layer_output[j]) 
 
                         # Update weights and bias for this neuron
                         for weight_i in range(len(neuron.weights)): #loops for each weight in neuron.
@@ -79,8 +94,7 @@ class NeuralNetwork:
 
             # Print loss every 100 epochs
             if epoch % 100 == 0:
-                y_preds = []
-                for x in data:
-                    y_preds.append(self.feedforward(x))
-                loss = mse_loss(all_y_trues, y_preds)
+                y_preds = [self.feedforward(x) for x in data]
+                loss = self.loss(all_y_trues, y_preds)
                 print(f"Epoch {epoch} loss: {loss:.6f}")
+
