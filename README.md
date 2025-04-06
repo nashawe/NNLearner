@@ -6,6 +6,12 @@ This project implements a fully customizable neural network from scratch using N
 
 The primary goal of this project is to gain a deeper understanding of how neural networks function internally by manually implementing core components.
 
+## 📚 Full Neural Network Explanations
+
+For a full deep dive into how the neural network works behind the scenes — with diagrams, math, and examples — check out this Google Drive folder:
+
+👉 [View Explanations Folder]([https://drive.google.com/drive/folders/YOUR_FOLDER_ID](https://drive.google.com/drive/u/0/folders/1VW3BlBr7E5cSYQKeAR7YvYL9XvSm0Nqt))
+
 ## Key Features
 
 ### Customizable Neural Network
@@ -43,11 +49,6 @@ This project is modularized into different files to make the project directory m
 ```
 
 5. Follow the prompts in the console to give the model data and customize it.
-
-## Future Enhancements/Improvements
-
-1. Integration of additional activation functions (eg., ReLU, Tanh). It could be interesting to use activation functions other than the sigmoid function in order to optimize the model for certain problems and datasets.
-2. Implementation of advanced optimization algorithms (e.g., Adam, RMSprop)
 
 ## License
 
