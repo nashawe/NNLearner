@@ -10,7 +10,7 @@ The primary goal of this project is to gain a deeper understanding of how neural
 
 For a full deep dive into how the neural network works behind the scenes — with diagrams, math, and examples — check out this Google Drive folder:
 
-👉 [View Explanations Folder]([https://drive.google.com/drive/folders/YOUR_FOLDER_ID](https://drive.google.com/drive/u/0/folders/1VW3BlBr7E5cSYQKeAR7YvYL9XvSm0Nqt))
+👉 [View Explanations Folder](https://drive.google.com/drive/folders/1VW3BlBr7E5cSYQKeAR7YvYL9XvSm0Nqt)
 
 ## Key Features
 
