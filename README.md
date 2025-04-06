@@ -14,23 +14,23 @@ For a full deep dive into how the neural network works behind the scenes — wit
 
 ## Key Features
 
-### Customizable Neural Network
+### Customizable Neural Network Architecture
 
-1. Supports user-defined input size, number of hidden layers, hidden layer size, learning rate, and epochs.
-2. Interactive user input for network parameters and training data.
-3. Custom implementation of forward propagation, backpropagation, and gradient descent.
+- Users can configure the neural network structure by selecting the number of inputs, hidden layers, neurons per layer, learning rate, and training epochs.
+- Supports multiple activation functions (`sigmoid`, `tanh`, `ReLU`) and loss functions (`mean squared error`, `binary cross-entropy`), with flexible combinations.
+- Each component of the network is defined using a modular configuration system, making the design highly extendable.
 
-### Object-Oriented Implementation
+### Fully Manual, From-Scratch Implementation
 
-1. Encapsulation of neurons and network using classes.
-2. Neuron class includes a `__call__` method for improved readability and scalability.
-3. Modular design, ensuring clarity and maintainability.
+- All core mechanisms of a neural network (forward propagation, backpropagation, and gradient descent) are built from scratch using NumPy, without high-level ML libraries.
+- The model is constructed using a class-based architecture with a `Neuron` class and a `NeuralNetwork` class, ensuring readability and scalability.
+- The training loop includes manual gradient calculations and layer-by-layer weight updates, giving full visibility into how the learning process works.
 
-### Interactive Training and Evaluation
+### Interactive Command-Line Interface
 
-1. Allows users to input their own training data via console input.
-2. Provides real-time feedback on loss reduction over epochs (every 100).
-3. Supports testing with custom input data after training completion.
+- The application runs entirely through the terminal, where users can input model parameters, paste training data, and enter labels.
+- Provides real-time feedback during training by displaying the loss value every 100 epochs.
+- After training, users can test the model immediately with new data and receive predictions on the spot.
 
 ## Project Structure
 
