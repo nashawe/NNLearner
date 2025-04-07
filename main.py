@@ -95,6 +95,13 @@ if __name__ == '__main__':
     num_layers = int(input("Enter the number of hidden layers: "))
     hidden_size = int(input("Enter the number of hidden neurons: "))
     learn_rate = float(input("Enter the learning rate (e.g., 0.05): "))
+    
+    print("Choose an optimizer:")
+    print("1 - Gradient Descent (Vanilla)")
+    print("2 - RMSprop")
+    print("3 - Adam")
+    optimizer_choice = int(input("Enter the number of your chosen optimizer: "))
+    
     epochs = int(input("Enter the number of epochs for training: "))
 
     # Get training data block input

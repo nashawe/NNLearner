@@ -5,7 +5,7 @@ from utils.activation import sigmoid, deriv_sig
 from utils.loss import mse_loss
 
 class NeuralNetwork:
-    def __init__(self, input_size, hidden_size, num_layers, config, dropout_rate=0, init_fn=None):
+    def __init__(self, input_size, hidden_size, num_layers, config, dropout_rate=0, init_fn=None, optimizer_choice=1):
         self.hidden_activation = config["hidden_activation"]
         self.hidden_deriv = config["hidden_deriv"]
         self.output_activation = config["output_activation"]
@@ -13,6 +13,9 @@ class NeuralNetwork:
         self.loss = config["loss"]
         self.loss_grad = config["loss_grad"]
         self.dropout_rate = dropout_rate
+        self.optimizer_choice = optimizer_choice
+        self.opt_states = {}  # stores momentums etc. for RMSprop/Adam
+        self.timestep = 1     # for Adam bias correction
 
         # Build hidden layers
         self.hidden_layers = []
@@ -28,6 +31,59 @@ class NeuralNetwork:
 
         # initializes the single output neuron
         self.output_neuron = Neuron(hidden_size, init_fn)
+        if self.optimizer_choice in [2, 3]:  # 2 = RMSprop, 3 = Adam
+            self._init_optimizer_states()
+
+    def _init_optimizer_states(self):
+        def zero_like_shape(shape):
+            return np.zeros(shape, dtype=np.float64)
+
+        # For each hidden neuron
+        for l_idx, layer in enumerate(self.hidden_layers):
+            for n_idx, neuron in enumerate(layer):
+                key = (l_idx, n_idx)
+                self.opt_states[key] = {
+                    'm': zero_like_shape(neuron.weights.shape),  # First moment (Adam)
+                    'v': zero_like_shape(neuron.weights.shape),  # Second moment (Adam/RMSprop)
+                    'mb': 0.0,  # Bias moment (Adam)
+                    'vb': 0.0,  # Bias variance (Adam/RMSprop)
+                }
+
+        # For output neuron
+        self.opt_states['output'] = {
+            'm': zero_like_shape(self.output_neuron.weights.shape),
+            'v': zero_like_shape(self.output_neuron.weights.shape),
+            'mb': 0.0,
+            'vb': 0.0,
+        }
+    def _update_weights(self, key, weights, grads, bias, dbias, learn_rate):
+        state = self.opt_states[key]
+        eps = 1e-8
+        beta1, beta2 = 0.9, 0.999
+        self.timestep += 1
+
+        if self.optimizer_choice == 2:  # RMSprop
+            state['v'] = 0.9 * state['v'] + 0.1 * (grads ** 2)
+            state['vb'] = 0.9 * state['vb'] + 0.1 * (dbias ** 2)
+
+            weights -= learn_rate * grads / (np.sqrt(state['v']) + eps)
+            bias -= learn_rate * dbias / (np.sqrt(state['vb']) + eps)
+
+        elif self.optimizer_choice == 3:  # Adam
+            state['m'] = beta1 * state['m'] + (1 - beta1) * grads
+            state['v'] = beta2 * state['v'] + (1 - beta2) * (grads ** 2)
+            m_hat = state['m'] / (1 - beta1 ** self.timestep)
+            v_hat = state['v'] / (1 - beta2 ** self.timestep)
+
+            state['mb'] = beta1 * state['mb'] + (1 - beta1) * dbias
+            state['vb'] = beta2 * state['vb'] + (1 - beta2) * (dbias ** 2)
+            mb_hat = state['mb'] / (1 - beta1 ** self.timestep)
+            vb_hat = state['vb'] / (1 - beta2 ** self.timestep)
+
+            weights -= learn_rate * m_hat / (np.sqrt(v_hat) + eps)
+            bias -= learn_rate * mb_hat / (np.sqrt(vb_hat) + eps)
+
+        return weights, bias
 
     def feedforward(self, x):
         for layer in self.hidden_layers: #this code happens for each layer in the list of hidden layers.
@@ -110,9 +166,17 @@ class NeuralNetwork:
 
 
         # 2) Update the output neuron (weights and bias)
-        for weight_i in range(len(self.output_neuron.weights)):
-            self.output_neuron.weights[weight_i] -= learn_rate * dZ_out * activations[-1][weight_i]
-        self.output_neuron.bias -= learn_rate * dZ_out
+        grads = dZ_out * np.array(activations[-1])
+        bias_grad = dZ_out
+
+        if self.optimizer_choice == 1:
+            self.output_neuron.weights -= learn_rate * grads
+            self.output_neuron.bias -= learn_rate * bias_grad
+        else:
+            w, b = self._update_weights('output', self.output_neuron.weights, grads, self.output_neuron.bias, bias_grad, learn_rate)
+            self.output_neuron.weights = w
+            self.output_neuron.bias = b
+
 
 
         # 3) Prepare gradient for the hidden layer below
@@ -132,10 +196,17 @@ class NeuralNetwork:
                 dZ_hidden = grad[j] * self.hidden_deriv(layer_output[j]) 
 
                 # Update weights and bias for this neuron
-                for weight_i in range(len(neuron.weights)): #loops for each weight in neuron.
-                    neuron.weights[weight_i] -= learn_rate * dZ_hidden * layer_input[weight_i] #adjusts weights one by one
-                neuron.bias -= learn_rate * dZ_hidden #change the one bias
+                grads = dZ_hidden * np.array(layer_input)
+                bias_grad = dZ_hidden
 
+                if self.optimizer_choice == 1:
+                    neuron.weights -= learn_rate * grads
+                    neuron.bias -= learn_rate * bias_grad
+                else:
+                    key = (i, j)  # i = layer index, j = neuron index
+                    w, b = self._update_weights(key, neuron.weights, grads, neuron.bias, bias_grad, learn_rate)
+                    neuron.weights = w
+                    neuron.bias = b
                 # Accumulate gradient for the next backprop step
                 for weight_i in range(len(neuron.weights)):
                     new_grad[weight_i] += neuron.weights[weight_i] * dZ_hidden
