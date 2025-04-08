@@ -3,69 +3,105 @@ from models.network import NeuralNetwork
 from utils.activation import sigmoid, deriv_sig, tanh, deriv_tanh, relu, deriv_relu #imports all activation functions
 from utils.loss import mse_loss, bce_loss  #imports all loss functions
 from utils.winit import random_init, xavier_init, he_init
-
-def clipped_bce_grad(y_pred, y_true, eps=1e-7): #defined as seperate function because BCE can cause issues if not clipped.
-    y_pred = np.clip(y_pred, eps, 1 - eps)
-    return (y_pred - y_true) / (y_pred * (1 - y_pred))
+from utils.config import clipped_bce_grad, MODES
 
 WEIGHT_INITS = {
     1: random_init,
     2: xavier_init,
     3: he_init,
 }
+def load_full_model(filename):
+    data = np.load(filename)
 
-#dictionary of dictionaries for each component of each mode that can be selected.
-MODES = {
-    1: {  # Sigmoid + MSE
-        "hidden_activation": sigmoid,
-        "hidden_deriv": deriv_sig,
-        "output_activation": sigmoid,
-        "output_deriv": deriv_sig,
-        "loss": mse_loss,
-        "loss_grad": lambda y_pred, y_true: 2 * (y_pred - y_true),
-        "normalize": True,
-    },
-    2: {  # Sigmoid + Binary Cross-Entropy
-        "hidden_activation": sigmoid,
-        "hidden_deriv": deriv_sig,
-        "output_activation": sigmoid,
-        "output_deriv": deriv_sig,
-        "loss": bce_loss,
-        "loss_grad": clipped_bce_grad,
-        "normalize": True,
-    },
-    3: {  # Tanh + MSE
-        "hidden_activation": tanh,
-        "hidden_deriv": deriv_tanh,
-        "output_activation": tanh,
-        "output_deriv": deriv_tanh,
-        "loss": mse_loss,
-        "loss_grad": lambda y_pred, y_true: 2 * (y_pred - y_true),
-        "normalize": False,
-    },
-    4: {  # ReLU + Sigmoid + Binary Cross-Entropy
-        "hidden_activation": relu,
-        "hidden_deriv": deriv_relu,
-        "output_activation": sigmoid, #different than hidden activation because ReLu doesn't work for output neuron.
-        "output_deriv": deriv_sig, 
-        "loss": bce_loss,
-        "loss_grad": clipped_bce_grad,
-        "normalize": True,
-    },
-}
+    #gather NN attributes from previously saved file
+    input_size = int(data["input_size"])
+    hidden_size = int(data["hidden_size"])
+    num_layers = int(data["num_layers"])
+    dropout_rate = float(data["dropout_rate"])
+    optimizer_choice = int(data["optimizer_choice"])
+    mode_id = int(data["mode_id"])
+    bsize = int(data["batch_size"])
+    output_size = int(data["output_size"])
+
+    config = MODES[mode_id] 
+
+    #create an instance of the NeuralNetwork class with the following attributes
+    network = NeuralNetwork(
+        input_size=input_size,
+        hidden_size=hidden_size,
+        num_layers=num_layers,
+        output_size=output_size,
+        config=config,
+        dropout_rate=dropout_rate,
+        init_fn=random_init,
+        optimizer_choice=optimizer_choice
+    )
+
+    #basically build back up the network with for loops
+    for layer_index, layer in enumerate(network.hidden_layers):
+        for neuron_index, neuron in enumerate(layer):
+            key_w = f"hidden_{layer_index}_{neuron_index}_weights"
+            key_b = f"hidden_{layer_index}_{neuron_index}_bias"
+            neuron.weights = data[key_w]
+            neuron.bias = data[key_b]
+
+    for i, neuron in enumerate(network.output_layer):
+        neuron.weights = data[f"output_{i}_weights"]
+        neuron.bias = data[f"output_{i}_bias"]
+
+
+    print(f"\nModel loaded from {filename}")
+    print(f"Model Architecture:\n- Input size: {input_size}\n- Hidden layers: {num_layers}\n- Neurons per layer: {hidden_size}\n- Number of output neurons: {output_size}\n- Dropout rate: {dropout_rate}\n- Optimizer: {optimizer_choice}\n- Mode ID: {mode_id}\n- Batch size: {bsize}")
+    
+    return network, config
 
 if __name__ == '__main__':
+    print("Do you want to load a previously saved model? (y/n): ")
+    load_model_choice = input().strip().lower()
+
+    if load_model_choice == "y":
+        filename = input("Enter filename (e.g., my_model.npz): ").strip()
+        if not filename.endswith(".npz"):
+            filename += ".npz"
+        network, config = load_full_model(filename)
+
+        # Optionally: test it or resume training
+
+        test_choice = input("Would you like to test the loaded model? (y/n): ").strip().lower()
+        if test_choice == 'y': #if they want to test the loaded model:
+            print("\nPaste your test data here (each line is a sample, comma-separated values).")
+            print("When you're done, enter an empty line to finish:")
+            test_data_lines = []
+            while True:
+                line = input()
+                if line.strip() == "":
+                    break
+                test_data_lines.append(line)
+            test_data = np.array([[float(value.strip()) for value in line.split(',')] for line in test_data_lines])
+            if config.get("normalize"):
+                test_data = test_data / 10.0
+
+            print("\nModel predictions:")
+            for sample in test_data:
+                prediction = network.feedforward(sample)
+                print(f"Input: {sample} so prediction: {prediction}")
+        else:
+            print("Testing skipped. Good job on training your model!")
+        exit() #dont do the rest of main because model was already loaded and used
+
     # User input for network parameters and training data
+    output_size = int(input("Enter the number of outputs per sample (e.g., 1 for binary, 3 for 3-class classification): "))
+
     print("Choose a model setup (activation function + loss function):")
     print("1 - Sigmoid + Mean Squared Error (Good for regression or simple binary classification; not ideal for probabilities)")
     print("2 - Sigmoid + Binary Cross-Entropy (Best for binary classification; outputs are probabilities)")
     print("3 - Tanh + Mean Squared Error (Works for values between -1 and 1; can suffer from vanishing gradients)")
     print("4 - ReLU (hidden) + Sigmoid (output) + Binary Cross-Entropy (Fast and accurate for deeper models)")
     
-    
     model_setup = int(input("Enter the number of your chosen setup (1-4): "))
-    config = MODES[model_setup]
+    config = MODES[model_setup] #relates the integer inputted by user to the actual model setup that is coded
     
+    #this helps with printing out the summary of the model
     if model_setup == 1:
         print_model = "Sigmoid + Mean Squared Error"
     elif model_setup == 2:
@@ -77,20 +113,25 @@ if __name__ == '__main__':
         
     input_size = int(input("Enter the number of inputs per sample (if using default dataset, input 3): "))
     
+    #bs is the variable that tells us whether or not user wants mini batch
     bs = input("Would you like to use Mini-Batch training? (y/n) ")
     if bs == "y":
         bsize = int(input("How many samples per mini-batch? (eg. 16, 32, 64) "))
     elif bs == "n":
         print("Ok. Model will be trained on each sample, one by one.")
+        bsize = 1
     else:
         print("Not a valid answer. Please pick y or n.")
         bs = input("Would you like to use Mini-Batch training? (y/n) ")
         
-    do = input("Would you like to use dropout? (y/n) ")
+        
+    #do is the variable that tells us whether or not user wants dropout
+    do = input("Would you like to use dropout? (y/n) ") 
     if do == "y":
         dropout_rate = float(input("Enter dropout rate (e.g., 0.2 for 20% dropout) "))
     elif do == "n":
         print("Ok. Model will not use dropout and all neurons will be used 100% of the time.")
+        dropout_rate = 0.0
     else:
         print("Not a valid answer. Please pick y or n.")
         do = input("Would you like to use dropout? (y/n) ")
@@ -101,8 +142,9 @@ if __name__ == '__main__':
     print("3 - He weight initialization")
         
     init_method = int(input("Enter the number of your chosen weight initialization method (1-3): "))
-    weight_init = WEIGHT_INITS[init_method]
+    weight_init = WEIGHT_INITS[init_method] #relates the integer inputted by user to the actual optimization function that is coded
     
+    #this helps with printing out the summary of the model
     if init_method == 1:
         init_print = "Random weight initialization"
     elif init_method == 2:
@@ -120,6 +162,7 @@ if __name__ == '__main__':
     print("3 - Adam")
     optimizer_choice = int(input("Enter the number of your chosen optimizer: "))
     
+    #this helps with printing out the summary of the model
     if optimizer_choice == 1:
         print_opt = "Gradient Descent (Vanilla)"
     elif optimizer_choice == 2:
@@ -129,9 +172,11 @@ if __name__ == '__main__':
     
     epochs = int(input("Enter the number of epochs for training: "))
 
+    #does user want to use default dataset to experiment?
     print("Do you want to use the default dataset? (y/n)")
     use_default = input().strip().lower()
     
+    #if they say yes, set what would be the data input to a hard code array of strings.
     if use_default == "y":
         data_lines = [
             "1,2,1",
@@ -166,6 +211,8 @@ if __name__ == '__main__':
             "10,8,6"
         ]
         labels_input = "0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,1,1,1,1,1"
+        
+        #if they say no, ask user for their data
     else:
         # Get training data block input
         print("\nPaste your training data here.")
@@ -181,7 +228,7 @@ if __name__ == '__main__':
         
         labels_input = input("\nPaste the labels for each sample, separated by commas: ")
 
-    # Parse the data
+    # Parse the data (valid for both default data and user inputted data)
     data = np.array([[float(value.strip()) for value in line.split(',')] for line in data_lines])
     labels = np.array([float(label.strip()) for label in labels_input.split(',')], dtype=np.float64)
 
@@ -189,9 +236,22 @@ if __name__ == '__main__':
     if config.get("normalize"):
         data = data / 10.0
       
-    # Create and train the neural network
-    network = NeuralNetwork(input_size, hidden_size, num_layers, config, dropout_rate=dropout_rate if do == "y" else 0, init_fn=weight_init)
-    network.train(data, labels, learn_rate=learn_rate, epochs=epochs)
+    #create network
+    network = NeuralNetwork(
+        input_size,
+        hidden_size,
+        num_layers,
+        output_size,       
+        config,
+        dropout_rate=dropout_rate if do == "y" else 0,
+        init_fn=weight_init,
+        optimizer_choice=optimizer_choice
+    )
+    
+    #train the model
+    network.train(data, labels, learn_rate=learn_rate, epochs=epochs, bsize=bsize)
+    
+    #print out the attributes of the model after training to "summarize" it
     print(f"\nTraining complete. The model used:\nMode: {print_model}\nNumber of inputs: {input_size}\nMini-batch size: {bsize}\nDropout rate: {dropout_rate}\nWeight Initialization: {init_print}\nOptimizer function: {print_opt}\nNumber of hidden layers: {num_layers}\nNumber of neurons per layer: {hidden_size}\nLearning rate: {learn_rate}\nNumber of epochs: {epochs}")
     
     # Ask the user if they'd like to test the model
@@ -215,3 +275,22 @@ if __name__ == '__main__':
             print(f"Input: {sample} so prediction: {prediction}")
     else:
         print("Testing skipped. Good job on training your model!")
+    
+    #ask whether or not they want to save the model
+    save_choice = input("Would you like to save the trained model? (y/n): ").strip().lower()
+    if save_choice == 'y': 
+        filename = input("Enter a filename to save the model (e.g., my_model.npz): ").strip() #if yes then ask for a filename
+        if not filename.endswith(".npz"): 
+            filename += ".npz"
+        network.save_model(
+            filename,
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            dropout_rate=dropout_rate if do == "y" else 0,
+            optimizer_choice=optimizer_choice,
+            mode_id=model_setup,
+            bsize=bsize
+        )
+    else:
+        print("Model not saved.")

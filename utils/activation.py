@@ -19,3 +19,7 @@ def relu(x):
 
 def deriv_relu(x):
     return (x > 0).astype(float)
+
+def softmax(x):
+    exps = np.exp(x - np.max(x))  # for numerical stability
+    return exps / np.sum(exps)
