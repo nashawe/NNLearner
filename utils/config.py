@@ -50,6 +50,6 @@ MODES = {
     "output_deriv": None, 
     "loss": cross_entropy,
     "loss_grad": cross_entropy_grad,
-    "normalize": True,
+    "normalize": False,
     }
 }

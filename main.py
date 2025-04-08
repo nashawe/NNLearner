@@ -97,8 +97,9 @@ if __name__ == '__main__':
     print("2 - Sigmoid + Binary Cross-Entropy (Best for binary classification; outputs are probabilities)")
     print("3 - Tanh + Mean Squared Error (Works for values between -1 and 1; can suffer from vanishing gradients)")
     print("4 - ReLU (hidden) + Sigmoid (output) + Binary Cross-Entropy (Fast and accurate for deeper models)")
+    print("5 - ReLU (hidden) + Softmax (output) + Cross-Entropy (Best for multiclass classification)")
     
-    model_setup = int(input("Enter the number of your chosen setup (1-4): "))
+    model_setup = int(input("Enter the number of your chosen setup (1-5): "))
     config = MODES[model_setup] #relates the integer inputted by user to the actual model setup that is coded
     
     #this helps with printing out the summary of the model
@@ -110,6 +111,9 @@ if __name__ == '__main__':
         print_model = "Tanh + Mean Squared Error"
     elif model_setup == 4:
         print_model = "ReLU (hidden) + Sigmoid (output) + Binary Cross-Entropy"    
+    elif model_setup == 5:
+        print_model = "ReLU (hidden) + Softmax (output) + Cross-Entropy"
+
         
     input_size = int(input("Enter the number of inputs per sample (if using default dataset, input 3): "))
     
@@ -231,6 +235,13 @@ if __name__ == '__main__':
     # Parse the data (valid for both default data and user inputted data)
     data = np.array([[float(value.strip()) for value in line.split(',')] for line in data_lines])
     labels = np.array([float(label.strip()) for label in labels_input.split(',')], dtype=np.float64)
+
+    if model_setup == 5:
+        def to_one_hot(index, num_classes):
+            one_hot = np.zeros(num_classes)
+            one_hot[int(index)] = 1.0
+            return one_hot
+        labels = np.array([to_one_hot(label, output_size) for label in labels])
 
     # Optional normalization
     if config.get("normalize"):

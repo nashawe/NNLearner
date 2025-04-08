@@ -95,12 +95,20 @@ class NeuralNetwork:
                 z = np.dot(neuron.weights, x) + neuron.bias
                 new_x.append(self.hidden_activation(z)) #adds each neurons output to list of outputs
             x = new_x
-        # Finally pass the result to the output neurons
-        outputs = [] #starts a blank array for the outputs
+        #now collect all logits for the output layer
+        z_vector = []
         for neuron in self.output_layer:
             z = np.dot(neuron.weights, x) + neuron.bias
-            outputs.append(self.output_activation(z))
-        return np.array(outputs)
+            z_vector.append(z)
+
+        z_vector = np.array(z_vector)
+
+        # If using softmax, do it exactly once across the entire vector
+        if self.output_activation.__name__ == "softmax":  
+            return self.output_activation(z_vector)
+        else:
+            # e.g., for sigmoid or tanh, do them individually
+            return np.array([self.output_activation(z) for z in z_vector])
 
     def train(self, data, all_y_trues, learn_rate=0.05, epochs=1000, bsize=None):
         for epoch in range(epochs + 1):
@@ -179,8 +187,11 @@ class NeuralNetwork:
         for i, neuron in enumerate(self.output_layer):
             z = np.dot(neuron.weights, activations[-1]) + neuron.bias
             zs.append(z)
-            error = self.loss_grad(y_pred[i], y_true[i])
-            dZ = error * self.output_deriv(z)
+            if self.output_deriv is None:
+                dZ = self.loss_grad(y_pred, y_true)[i]
+            else:
+                error = self.loss_grad(y_pred[i], y_true[i])
+                dZ = error * self.output_deriv(z)
             dZ_outs.append(dZ)            
         
         for i, neuron in enumerate(self.output_layer):
