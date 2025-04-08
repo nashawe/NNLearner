@@ -65,7 +65,17 @@ if __name__ == '__main__':
     
     model_setup = int(input("Enter the number of your chosen setup (1-4): "))
     config = MODES[model_setup]
-    input_size = int(input("Enter the number of inputs per sample: "))
+    
+    if model_setup == 1:
+        print_model = "Sigmoid + Mean Squared Error"
+    elif model_setup == 2:
+        print_model = "Sigmoid + Binary Cross-Entropy"
+    elif model_setup == 3:
+        print_model = "Tanh + Mean Squared Error"
+    elif model_setup == 4:
+        print_model = "ReLU (hidden) + Sigmoid (output) + Binary Cross-Entropy"    
+        
+    input_size = int(input("Enter the number of inputs per sample (if using default dataset, input 3): "))
     
     bs = input("Would you like to use Mini-Batch training? (y/n) ")
     if bs == "y":
@@ -92,6 +102,14 @@ if __name__ == '__main__':
         
     init_method = int(input("Enter the number of your chosen weight initialization method (1-3): "))
     weight_init = WEIGHT_INITS[init_method]
+    
+    if init_method == 1:
+        init_print = "Random weight initialization"
+    elif init_method == 2:
+        init_print = "Xavier weight initialization"
+    elif init_method == 3:
+        init_print = "He weight initialization"
+    
     num_layers = int(input("Enter the number of hidden layers: "))
     hidden_size = int(input("Enter the number of hidden neurons: "))
     learn_rate = float(input("Enter the learning rate (e.g., 0.05): "))
@@ -102,30 +120,79 @@ if __name__ == '__main__':
     print("3 - Adam")
     optimizer_choice = int(input("Enter the number of your chosen optimizer: "))
     
+    if optimizer_choice == 1:
+        print_opt = "Gradient Descent (Vanilla)"
+    elif optimizer_choice == 2:
+        print_opt = "RMSprop"
+    elif optimizer_choice == 3:
+        print_opt = "Adam"
+    
     epochs = int(input("Enter the number of epochs for training: "))
 
-    # Get training data block input
-    print("\nPaste your training data here.")
-    print("Each line should represent a sample with comma-separated values.")
-    print("When you're done, enter an empty line to finish:")
-    data_lines = []
-    while True:
-        line = input()
-        if line.strip() == "":
-            break
-        data_lines.append(line)
+    print("Do you want to use the default dataset? (y/n)")
+    use_default = input().strip().lower()
+    
+    if use_default == "y":
+        data_lines = [
+            "1,2,1",
+            "2,4,2",
+            "3,3,1",
+            "4,5,3",
+            "5,5,5",
+            "6,4,6",
+            "7,6,6",
+            "8,7,7",
+            "9,8,8",
+            "10,9,9",
+            "1,1,0",
+            "2,2,1",
+            "3,1,2",
+            "4,2,1",
+            "5,3,2",
+            "6,2,3",
+            "7,3,4",
+            "8,4,5",
+            "9,5,6",
+            "10,6,7",
+            "1,0,0",
+            "2,1,1",
+            "3,2,1",
+            "4,3,2",
+            "5,4,2",
+            "6,5,3",
+            "7,5,4",
+            "8,6,5",
+            "9,7,5",
+            "10,8,6"
+        ]
+        labels_input = "0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,1,1,1,1,1"
+    else:
+        # Get training data block input
+        print("\nPaste your training data here.")
+        print("Each line should represent a sample with comma-separated values.")
+        print("When you're done, enter an empty line to finish:")
+        data_lines = []
+        
+        while True:
+            line = input()
+            if line.strip() == "":
+                break
+            data_lines.append(line)
+        
+        labels_input = input("\nPaste the labels for each sample, separated by commas: ")
+
+    # Parse the data
     data = np.array([[float(value.strip()) for value in line.split(',')] for line in data_lines])
+    labels = np.array([float(label.strip()) for label in labels_input.split(',')], dtype=np.float64)
+
+    # Optional normalization
     if config.get("normalize"):
         data = data / 10.0
-    
-    # Get labels as a single comma-separated line
-    labels_input = input("\nPaste the labels for each sample, separated by commas: ")
-    labels = np.array([float(label.strip()) for label in labels_input.split(',')], dtype=np.float64)
-    
+      
     # Create and train the neural network
     network = NeuralNetwork(input_size, hidden_size, num_layers, config, dropout_rate=dropout_rate if do == "y" else 0, init_fn=weight_init)
     network.train(data, labels, learn_rate=learn_rate, epochs=epochs)
-    print("\nTraining complete!")
+    print(f"\nTraining complete. The model used:\nMode: {print_model}\nNumber of inputs: {input_size}\nMini-batch size: {bsize}\nDropout rate: {dropout_rate}\nWeight Initialization: {init_print}\nOptimizer function: {print_opt}\nNumber of hidden layers: {num_layers}\nNumber of neurons per layer: {hidden_size}\nLearning rate: {learn_rate}\nNumber of epochs: {epochs}")
     
     # Ask the user if they'd like to test the model
     test_choice = input("Would you like to test the model with new data? (y/n): ").strip().lower()
@@ -147,4 +214,4 @@ if __name__ == '__main__':
             prediction = network.feedforward(sample)
             print(f"Input: {sample} so prediction: {prediction}")
     else:
-        print("Okay, testing skipped. Good job on training your model!")
+        print("Testing skipped. Good job on training your model!")

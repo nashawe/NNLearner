@@ -39,9 +39,9 @@ class NeuralNetwork:
             return np.zeros(shape, dtype=np.float64)
 
         # For each hidden neuron
-        for l_idx, layer in enumerate(self.hidden_layers):
-            for n_idx, neuron in enumerate(layer):
-                key = (l_idx, n_idx)
+        for l_index, layer in enumerate(self.hidden_layers):
+            for n_index, neuron in enumerate(layer):
+                key = (l_index, n_index)
                 self.opt_states[key] = {
                     'm': zero_like_shape(neuron.weights.shape),  # First moment (Adam)
                     'v': zero_like_shape(neuron.weights.shape),  # Second moment (Adam/RMSprop)
@@ -51,10 +51,10 @@ class NeuralNetwork:
 
         # For output neuron
         self.opt_states['output'] = {
-            'm': zero_like_shape(self.output_neuron.weights.shape),
-            'v': zero_like_shape(self.output_neuron.weights.shape),
-            'mb': 0.0,
-            'vb': 0.0,
+            'm': zero_like_shape(self.output_neuron.weights.shape),  # First moment (Adam)
+            'v': zero_like_shape(self.output_neuron.weights.shape),  # Second moment (Adam/RMSprop)
+            'mb': 0.0,  # Bias moment (Adam)
+            'vb': 0.0,  # Bias variance (Adam/RMSprop)
         }
     def _update_weights(self, key, weights, grads, bias, dbias, learn_rate):
         state = self.opt_states[key]
@@ -63,25 +63,25 @@ class NeuralNetwork:
         self.timestep += 1
 
         if self.optimizer_choice == 2:  # RMSprop
-            state['v'] = 0.9 * state['v'] + 0.1 * (grads ** 2)
-            state['vb'] = 0.9 * state['vb'] + 0.1 * (dbias ** 2)
+            state['v'] = 0.9 * state['v'] + 0.1 * (grads ** 2)  # Update the second moment
+            state['vb'] = 0.9 * state['vb'] + 0.1 * (dbias ** 2)  # Update the bias variance
 
-            weights -= learn_rate * grads / (np.sqrt(state['v']) + eps)
-            bias -= learn_rate * dbias / (np.sqrt(state['vb']) + eps)
+            weights -= learn_rate * grads / (np.sqrt(state['v']) + eps)  # Update the weights using RMSprop
+            bias -= learn_rate * dbias / (np.sqrt(state['vb']) + eps)  # Update the bias using RMSprop
 
         elif self.optimizer_choice == 3:  # Adam
-            state['m'] = beta1 * state['m'] + (1 - beta1) * grads
-            state['v'] = beta2 * state['v'] + (1 - beta2) * (grads ** 2)
-            m_hat = state['m'] / (1 - beta1 ** self.timestep)
-            v_hat = state['v'] / (1 - beta2 ** self.timestep)
+            state['m'] = beta1 * state['m'] + (1 - beta1) * grads  # Update the first moment
+            state['v'] = beta2 * state['v'] + (1 - beta2) * (grads ** 2)  # Update the second moment
+            m_hat = state['m'] / (1 - beta1 ** self.timestep)  # Bias-corrected first moment
+            v_hat = state['v'] / (1 - beta2 ** self.timestep)  # Bias-corrected second moment
 
-            state['mb'] = beta1 * state['mb'] + (1 - beta1) * dbias
-            state['vb'] = beta2 * state['vb'] + (1 - beta2) * (dbias ** 2)
-            mb_hat = state['mb'] / (1 - beta1 ** self.timestep)
-            vb_hat = state['vb'] / (1 - beta2 ** self.timestep)
+            state['mb'] = beta1 * state['mb'] + (1 - beta1) * dbias  # Update the bias moment
+            state['vb'] = beta2 * state['vb'] + (1 - beta2) * (dbias ** 2)  # Update the bias variance
+            mb_hat = state['mb'] / (1 - beta1 ** self.timestep)  # Bias-corrected bias moment
+            vb_hat = state['vb'] / (1 - beta2 ** self.timestep)  # Bias-corrected bias variance
 
-            weights -= learn_rate * m_hat / (np.sqrt(v_hat) + eps)
-            bias -= learn_rate * mb_hat / (np.sqrt(vb_hat) + eps)
+            weights -= learn_rate * m_hat / (np.sqrt(v_hat) + eps)  # Update the weights using Adam
+            bias -= learn_rate * mb_hat / (np.sqrt(vb_hat) + eps)  # Update the bias using Adam
 
         return weights, bias
 
