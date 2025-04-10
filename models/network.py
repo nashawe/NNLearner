@@ -148,8 +148,21 @@ class NeuralNetwork:
                     pct = 100 * total_dropped / total_neurons
                     dropout_info = f" | Total dropout: {total_dropped}/{total_neurons} ({pct:.1f}%)"
                 print(f"Epoch {epoch} loss: {loss:.6f}{dropout_info}")
-
-
+        if self.output_size == 1 and self.loss.__name__ == "bce_loss": #run metrics only if binary and bce loss
+            from utils.metrics import accuracy, precision, recall, f1_score
+            y_preds = np.array([self.feedforward(x)[0] for x in data]) #set y_preds
+            acc = accuracy(all_y_trues, y_preds) #call the accuracy function
+            prec = precision(all_y_trues, y_preds) #call the precision function 
+            rec = recall(all_y_trues, y_preds) #call the recall function    
+            f1 = f1_score(all_y_trues, y_preds) #call the f1 function
+            
+            print("\n📊 Final Training Metrics:") #print the metrics at the end
+            print(f"Accuracy:  {acc:.4f}")
+            print(f"Precision: {prec:.4f}")
+            print(f"Recall:    {rec:.4f}")
+            print(f"F1 Score:  {f1:.4f}")
+        else:
+            print("\nMetrics are not available because you either didn't use binary classification or you didnt use BCE loss.")
 
     def _train_sample(self, x, y_true, learn_rate): #this is a helper function so I don't have to rewrite for batch-size vs non batch-size training      
         # Forward pass: store activations at each layer
