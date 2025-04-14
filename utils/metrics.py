@@ -20,3 +20,8 @@ def f1_score(y_true, y_pred):
     p = precision(y_true, y_pred)
     r = recall(y_true, y_pred)
     return 2 * p * r / (p + r + 1e-10)
+
+def multiclass_accuracy(y_true, y_pred):
+    true_labels = np.argmax(y_true, axis=1)
+    pred_labels = np.argmax(y_pred, axis=1)
+    return np.mean(true_labels == pred_labels)

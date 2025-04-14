@@ -4,6 +4,7 @@ from utils.activation import sigmoid, deriv_sig, tanh, deriv_tanh, relu, deriv_r
 from utils.loss import mse_loss, bce_loss  #imports all loss functions
 from utils.winit import random_init, xavier_init, he_init
 from utils.config import clipped_bce_grad, MODES
+from utils.testing import test_model_loop
 
 WEIGHT_INITS = {
     1: random_init,
@@ -68,25 +69,8 @@ if __name__ == '__main__':
         # Optionally: test it or resume training
 
         test_choice = input("Would you like to test the loaded model? (y/n): ").strip().lower()
-        if test_choice == 'y': #if they want to test the loaded model:
-            print("\nPaste your test data here (each line is a sample, comma-separated values).")
-            print("When you're done, enter an empty line to finish:")
-            test_data_lines = []
-            while True:
-                line = input()
-                if line.strip() == "":
-                    break
-                test_data_lines.append(line)
-            test_data = np.array([[float(value.strip()) for value in line.split(',')] for line in test_data_lines])
-            if config.get("normalize"):
-                test_data = test_data / 10.0
-
-            print("\nModel predictions:")
-            for sample in test_data:
-                prediction = network.feedforward(sample)
-                print(f"Input: {sample} so prediction: {prediction}")
-        else:
-            print("Testing skipped. Good job on training your model!")
+        if test_choice == "y":
+            test_model_loop(network, config)
         exit() #dont do the rest of main because model was already loaded and used
 
     # User input for network parameters and training data
@@ -268,22 +252,7 @@ if __name__ == '__main__':
     # Ask the user if they'd like to test the model
     test_choice = input("Would you like to test the model with new data? (y/n): ").strip().lower()
     if test_choice == 'y':
-        print("\nPaste your test data here (each line is a sample, comma-separated values).")
-        print("When you're done, enter an empty line to finish:")
-        test_data_lines = []
-        while True:
-            line = input()
-            if line.strip() == "":
-                break
-            test_data_lines.append(line)
-        test_data = np.array([[float(value.strip()) for value in line.split(',')] for line in test_data_lines])
-        if config.get("normalize"):
-            test_data = test_data / 10.0
-
-        print("\nModel predictions:")
-        for sample in test_data:
-            prediction = network.feedforward(sample)
-            print(f"Input: {sample} so prediction: {prediction}")
+        test_model_loop(network, config)
     else:
         print("Testing skipped. Good job on training your model!")
     

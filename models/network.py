@@ -3,6 +3,7 @@ import random
 from models.neuron import Neuron
 from utils.activation import sigmoid, deriv_sig
 from utils.loss import mse_loss
+from utils.testing import test_model_loop
 
 class NeuralNetwork:
     def __init__(self, input_size, hidden_size, num_layers, output_size, config, dropout_rate=0, init_fn=None, optimizer_choice=1):
@@ -148,6 +149,7 @@ class NeuralNetwork:
                     pct = 100 * total_dropped / total_neurons
                     dropout_info = f" | Total dropout: {total_dropped}/{total_neurons} ({pct:.1f}%)"
                 print(f"Epoch {epoch} loss: {loss:.6f}{dropout_info}")
+                
         if self.output_size == 1 and self.loss.__name__ == "bce_loss": #run metrics only if binary and bce loss
             from utils.metrics import accuracy, precision, recall, f1_score
             y_preds = np.array([self.feedforward(x)[0] for x in data]) #set y_preds
@@ -156,13 +158,18 @@ class NeuralNetwork:
             rec = recall(all_y_trues, y_preds) #call the recall function    
             f1 = f1_score(all_y_trues, y_preds) #call the f1 function
             
-            print("\n📊 Final Training Metrics:") #print the metrics at the end
+            print("\nFinal Training Metrics:") #print the metrics at the end
             print(f"Accuracy:  {acc:.4f}")
             print(f"Precision: {prec:.4f}")
             print(f"Recall:    {rec:.4f}")
             print(f"F1 Score:  {f1:.4f}")
         else:
-            print("\nMetrics are not available because you either didn't use binary classification or you didnt use BCE loss.")
+            from utils.metrics import multiclass_accuracy
+            y_preds = np.array([self.feedforward(x) for x in data])
+            acc = multiclass_accuracy(all_y_trues, y_preds)
+            print(f"\nFinal Training Metrics:")
+            print(f"Multiclass Accuracy: {acc:.4f}")
+
 
     def _train_sample(self, x, y_true, learn_rate): #this is a helper function so I don't have to rewrite for batch-size vs non batch-size training      
         # Forward pass: store activations at each layer
