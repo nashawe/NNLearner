@@ -320,5 +320,7 @@ class NeuralNetwork:
             model_data[f"output_{i}_bias"] = neuron.bias
         
         #save to .npz file
-        np.savez(filename, **model_data)
-        print(f"Model saved to {filename}")
+        save_path = os.path.join("saved_models", filename)
+        np.savez(save_path, **model_data)
+        print(f"Model saved to {save_path}")
+        

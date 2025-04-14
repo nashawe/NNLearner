@@ -5,6 +5,7 @@ from utils.loss import mse_loss, bce_loss  #imports all loss functions
 from utils.winit import random_init, xavier_init, he_init
 from utils.config import clipped_bce_grad, MODES
 from utils.testing import test_model_loop
+import os
 
 WEIGHT_INITS = {
     1: random_init,
@@ -12,7 +13,8 @@ WEIGHT_INITS = {
     3: he_init,
 }
 def load_full_model(filename):
-    data = np.load(filename)
+    load_path = os.path.join("saved_models", filename)
+    data = np.load(load_path)
 
     #gather NN attributes from previously saved file
     input_size = int(data["input_size"])

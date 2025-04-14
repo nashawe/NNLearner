@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List, Union, Optional
 from api.train_runner import run_training_from_api
 from api.predict_runner import run_prediction_from_api
+import os
 
 app = FastAPI() #defines the API app
 
@@ -56,3 +57,9 @@ def predict(request: PredictRequest):
         test_data = request.test_data
     )
     return result
+
+@app.get("/models")
+def list_saved_models():
+    models_dir = "saved_models"
+    model_files = [f for f in os.listdir(models_dir) if f.endswith(".npz")]
+    return {"models": model_files}

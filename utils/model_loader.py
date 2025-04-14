@@ -4,7 +4,8 @@ from utils.config import MODES
 from utils.winit import random_init
 
 def load_full_model(filename):
-    data = np.load(filename)
+    load_path = os.path.join("saved_models", filename)
+    data = np.load(load_path)
 
     #gather NN attributes from previously saved file
     input_size = int(data["input_size"])
