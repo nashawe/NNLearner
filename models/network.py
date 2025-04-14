@@ -112,6 +112,8 @@ class NeuralNetwork:
             return np.array([self.output_activation(z) for z in z_vector])
 
     def train(self, data, all_y_trues, learn_rate=0.05, epochs=1000, bsize=None):
+        loss_history = []
+        accuracy_history = []
         for epoch in range(epochs + 1):
             total_dropped = 0
             total_neurons = 0
@@ -142,8 +144,29 @@ class NeuralNetwork:
                 
             # Print loss every 100 epochs
             if epoch % 100 == 0:
+                
+                # Compute predictions and loss
+                if self.output_size == 1:
+                    y_preds = np.array([self.feedforward(x)[0] for x in data])
+                    acc = None
+                    if self.loss.__name__ == "bce_loss":
+                        from utils.metrics import accuracy
+                        acc = accuracy(all_y_trues, y_preds)
+                else:
+                    y_preds = np.array([self.feedforward(x) for x in data])
+                    acc = None
+                    from utils.metrics import multiclass_accuracy
+                    acc = multiclass_accuracy(all_y_trues, y_preds)
+
+                loss = self.loss(all_y_trues, y_preds)
+                loss_history.append(loss)
+
+                if acc is not None: #checking acc is a value
+                    accuracy_history.append(acc)
+
                 y_preds = np.array([self.feedforward(x)[0] for x in data]) if self.output_size == 1 else np.array([self.feedforward(x) for x in data])
                 loss = self.loss(all_y_trues, y_preds)
+                loss_history.append(loss) #add the loss to the loss history
                 dropout_info = ""
                 if self.dropout_rate > 0 and total_neurons > 0:
                     pct = 100 * total_dropped / total_neurons
@@ -169,6 +192,9 @@ class NeuralNetwork:
             acc = multiclass_accuracy(all_y_trues, y_preds)
             print(f"\nFinal Training Metrics:")
             print(f"Multiclass Accuracy: {acc:.4f}")
+            
+        self.loss_history = loss_history
+        self.accuracy_history = accuracy_history
 
 
     def _train_sample(self, x, y_true, learn_rate): #this is a helper function so I don't have to rewrite for batch-size vs non batch-size training      
@@ -267,6 +293,7 @@ class NeuralNetwork:
         for dz in dZ_outs:
             if np.isnan(dz) or np.isinf(dz):
                 print("Gradient explosion!", dz)
+
         return sample_dropped, sample_total
     
     
