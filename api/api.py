@@ -1,25 +1,27 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List, Union
+from typing import List, Union, Optional
 from api.train_runner import run_training_from_api
 from api.predict_runner import run_prediction_from_api
 
 app = FastAPI() #defines the API app
 
-# 1. Define the structure of the expected input using a Pydantic model
+# 1. Define the structure of the expected input using a Pydantic mode
 class TrainRequest(BaseModel):
-    input_size: int  # Size of the input data
-    output_size: int  # Size of the output data
-    hidden_size: int  # Size of the hidden layers in the neural network
-    num_layers: int  # Number of layers in the neural network
-    dropout: float  # Dropout rate for regularization
-    optimizer_choice: int  # Choice of optimizer for training
-    mode_id: int  # Mode ID for the neural network
-    batch_size: Union[int, None] = None  # Batch size for training (optional)
-    learning_rate: float  # Learning rate for training
-    epochs: int  # Number of training epochs
-    data: List[List[float]]  # Input data for training
-    labels: List[Union[float, List[float]]]  # Output labels for training
+    input_size: int
+    output_size: int
+    hidden_size: int
+    num_layers: int
+    dropout: float
+    optimizer_choice: int
+    mode_id: int
+    batch_size: Optional[int] = None
+    learning_rate: float
+    epochs: int
+    data: List[List[float]]
+    labels: List[Union[float, List[float]]]
+    save_after_train: Optional[bool] = False
+    filename: Optional[str] = "latest_model.npz"
 
 class PredictRequest(BaseModel):
     model_path: str
@@ -41,7 +43,10 @@ def train_model(request: TrainRequest):
         epochs=request.epochs,
         data=request.data,
         labels=request.labels,
+        save_after_train=request.save_after_train,
+        filename=request.filename
     )
+
     return result
 
 @app.post("/predict")

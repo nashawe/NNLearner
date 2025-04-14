@@ -9,7 +9,7 @@ WEIGHT_INITS = {
     3: he_init,
 }
 
-def run_training_from_api( #setup function for API
+def run_training_from_api(
     input_size,
     output_size,
     hidden_size,
@@ -21,7 +21,9 @@ def run_training_from_api( #setup function for API
     learning_rate,
     epochs,
     data,
-    labels
+    labels,
+    save_after_train=False,
+    filename="latest_model.npz"
 ):
     # Get correct config and init function
     config = MODES[mode_id] #based on what user chose
@@ -58,7 +60,18 @@ def run_training_from_api( #setup function for API
 
     network.train(data, labels, learn_rate=learning_rate, epochs=epochs, bsize=batch_size)
 
-    # You can return any metrics you want here
+    if save_after_train: #if autosave is on
+        network.save_model(
+            filename,
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            dropout_rate=dropout,
+            optimizer_choice=optimizer_choice,
+            mode_id=mode_id,
+            bsize=batch_size
+        )
+    
     return {
         "message": "Training complete",
         "samples": len(data),
