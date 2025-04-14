@@ -31,35 +31,45 @@ class PredictRequest(BaseModel):
 # 2. Route for training
 @app.post("/train")
 def train_model(request: TrainRequest):
-    result = run_training_from_api(
-        input_size=request.input_size,
-        output_size=request.output_size,
-        hidden_size=request.hidden_size,
-        num_layers=request.num_layers,
-        dropout=request.dropout,
-        optimizer_choice=request.optimizer_choice,
-        mode_id=request.mode_id,
-        batch_size=request.batch_size,
-        learning_rate=request.learning_rate,
-        epochs=request.epochs,
-        data=request.data,
-        labels=request.labels,
-        save_after_train=request.save_after_train,
-        filename=request.filename
-    )
-
+    try:
+        result = run_training_from_api(
+            input_size=request.input_size,
+            output_size=request.output_size,
+            hidden_size=request.hidden_size,
+            num_layers=request.num_layers,
+            dropout=request.dropout,
+            optimizer_choice=request.optimizer_choice,
+            mode_id=request.mode_id,
+            batch_size=request.batch_size,
+            learning_rate=request.learning_rate,
+            epochs=request.epochs,
+            data=request.data,
+            labels=request.labels,
+            save_after_train=request.save_after_train,
+            filename=request.filename
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Training failed: {str(e)}")
     return result
 
 @app.post("/predict")
 def predict(request: PredictRequest):
-    result = run_prediction_from_api(
-        model_path = request.model_path,
-        test_data = request.test_data
-    )
-    return result
+    try:
+        result = run_prediction_from_api(
+            model_path = request.model_path,
+            test_data = request.test_data
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+
 
 @app.get("/models")
 def list_saved_models():
-    models_dir = "saved_models"
-    model_files = [f for f in os.listdir(models_dir) if f.endswith(".npz")]
-    return {"models": model_files}
+    try:
+        models_dir = "saved_models"
+        model_files = [f for f in os.listdir(models_dir) if f.endswith(".npz")]
+        return {"models": model_files}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not list models: {str(e)}")
+
