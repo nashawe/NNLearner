@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List, Union
 from api.train_runner import run_training_from_api
+from api.predict_runner import run_prediction_from_api
 
 app = FastAPI() #defines the API app
 
@@ -20,6 +21,10 @@ class TrainRequest(BaseModel):
     data: List[List[float]]  # Input data for training
     labels: List[Union[float, List[float]]]  # Output labels for training
 
+class PredictRequest(BaseModel):
+    model_path: str
+    test_data: List[List[float]]
+
 # 2. Route for training
 @app.post("/train")
 def train_model(request: TrainRequest):
@@ -36,5 +41,13 @@ def train_model(request: TrainRequest):
         epochs=request.epochs,
         data=request.data,
         labels=request.labels,
+    )
+    return result
+
+@app.post("/predict")
+def predict(request: PredictRequest):
+    result = run_prediction_from_api(
+        model_path = request.model_path,
+        test_data = request.test_data
     )
     return result

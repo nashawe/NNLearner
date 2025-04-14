@@ -144,29 +144,24 @@ class NeuralNetwork:
                 
             # Print loss every 100 epochs
             if epoch % 100 == 0:
-                
-                # Compute predictions and loss
-                if self.output_size == 1:
-                    y_preds = np.array([self.feedforward(x)[0] for x in data])
-                    acc = None
-                    if self.loss.__name__ == "bce_loss":
-                        from utils.metrics import accuracy
-                        acc = accuracy(all_y_trues, y_preds)
-                else:
-                    y_preds = np.array([self.feedforward(x) for x in data])
-                    acc = None
-                    from utils.metrics import multiclass_accuracy
-                    acc = multiclass_accuracy(all_y_trues, y_preds)
-
-                loss = self.loss(all_y_trues, y_preds)
-                loss_history.append(loss)
-
-                if acc is not None: #checking acc is a value
-                    accuracy_history.append(acc)
-
                 y_preds = np.array([self.feedforward(x)[0] for x in data]) if self.output_size == 1 else np.array([self.feedforward(x) for x in data])
+
                 loss = self.loss(all_y_trues, y_preds)
                 loss_history.append(loss) #add the loss to the loss history
+                
+                # Compute predictions and loss
+                if self.output_size == 1 and self.loss.__name__ == "bce_loss":
+                    from utils.metrics import accuracy
+                    acc = accuracy(all_y_trues, y_preds)
+                elif self.output_size > 1:
+                    from utils.metrics import multiclass_accuracy
+                    acc = multiclass_accuracy(all_y_trues, y_preds)
+                else:
+                    acc = None
+
+                if acc is not None:
+                    accuracy_history.append(acc)
+
                 dropout_info = ""
                 if self.dropout_rate > 0 and total_neurons > 0:
                     pct = 100 * total_dropped / total_neurons
