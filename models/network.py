@@ -4,6 +4,7 @@ from models.neuron import Neuron
 from utils.activation import sigmoid, deriv_sig
 from utils.loss import mse_loss
 from utils.testing import test_model_loop
+import os
 
 class NeuralNetwork:
     def __init__(self, input_size, hidden_size, num_layers, output_size, config, dropout_rate=0, init_fn=None, optimizer_choice=1):
@@ -122,7 +123,7 @@ class NeuralNetwork:
                 indices = np.arange(len(data)) #create an array (1, 2, 3...) that has the amount of numbers as there are data points.
                 np.random.shuffle(indices) #shuffle up this array to get a random order.
                 data = data[indices] #then redefine the dataset in that new order
-                all_y_trues = all_y_trues[indices] #then redefine the labels of that dataset to the same new order.
+                all_y_trues = np.array(all_y_trues)[indices] #then redefine the labels of that dataset to the same new order.
                 
                 for start in range(0, len(data), bsize): #iterate through all the data but this time in increments of batch size
                    

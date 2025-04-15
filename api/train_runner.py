@@ -58,6 +58,11 @@ def run_training_from_api(
         optimizer_choice=optimizer_choice
     )
 
+    # Force 2D shape if labels are flat
+    if isinstance(labels[0], (int, float)):
+        # Convert to one-hot using np.eye
+        num_classes = int(np.max(labels)) + 1
+        labels = np.eye(num_classes)[np.array(labels).astype(int)].tolist()
     network.train(data, labels, learn_rate=learning_rate, epochs=epochs, bsize=batch_size)
 
     if save_after_train: #if autosave is on

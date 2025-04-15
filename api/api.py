@@ -1,13 +1,27 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# now continue importing after CORS is applied
+from .train_runner import run_training_from_api
+from .predict_runner import run_prediction_from_api
+
 from pydantic import BaseModel
 from typing import List, Union, Optional
-from api.train_runner import run_training_from_api
-from api.predict_runner import run_prediction_from_api
-import os
 import uuid
-from fastapi.responses import JSONResponse
+import os
 
-app = FastAPI() #defines the API app
 
 # 1. Define the structure of the expected input using a Pydantic mode
 class TrainRequest(BaseModel):
@@ -86,6 +100,7 @@ def get_train_status(training_id: str):
 
 @app.exception_handler(Exception)
 async def handle_general_error(request: Request, exc: Exception):
+    print("❌ Backend error:", repr(exc))
     return JSONResponse(
         status_code=500,
         content={
