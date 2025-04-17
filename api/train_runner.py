@@ -20,6 +20,7 @@ def run_training_from_api(
     batch_size,
     learning_rate,
     epochs,
+    init_fn,
     data,
     labels,
     save_after_train=False,
@@ -76,7 +77,8 @@ def run_training_from_api(
             mode_id=mode_id,
             bsize=batch_size
         )
-    
+    final_metrics = network.final_metrics if hasattr(network, "final_metrics") else {}
+
     return {
         "message": "Training complete",
         "samples": len(data),
@@ -85,4 +87,5 @@ def run_training_from_api(
         "output_size": output_size,
         "loss_history": network.loss_history,
         "accuracy_history": network.accuracy_history,
+        **final_metrics,  # ✅ Add final loss + accuracy
     }

@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+import asyncio
 
 app = FastAPI()
 
@@ -21,6 +22,7 @@ from pydantic import BaseModel
 from typing import List, Union, Optional
 import uuid
 import os
+from models.network import NeuralNetwork
 
 
 # 1. Define the structure of the expected input using a Pydantic mode
@@ -33,6 +35,7 @@ class TrainRequest(BaseModel):
     optimizer_choice: int
     mode_id: int
     batch_size: Optional[int] = None
+    init_fn: Optional[int] = 1
     learning_rate: float
     epochs: int
     data: List[List[float]]
@@ -58,11 +61,12 @@ def train_model(request: TrainRequest):
         mode_id=request.mode_id,
         batch_size=request.batch_size,
         learning_rate=request.learning_rate,
+        init_fn=request.init_fn,
         epochs=request.epochs,
         data=request.data,
         labels=request.labels,
         save_after_train=request.save_after_train,
-        filename=request.filename
+        filename=request.filename,
     )
     return {
         "training_id": training_id,
@@ -108,3 +112,34 @@ async def handle_general_error(request: Request, exc: Exception):
             "details": str(exc)
         }
     )
+
+@app.websocket("/ws/train-status")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        # Create an instance of the neural network
+        network = NeuralNetwork(
+            input_size=request.input_size,
+            output_size=request.output_size,
+            hidden_size=request.hidden_size,
+            num_layers=request.num_layers,
+            dropout=request.dropout,
+            optimizer_choice=request.optimizer_choice,
+            mode_id=request.mode_id,
+            batch_size=request.batch_size,
+            learning_rate=request.learning_rate,
+            epochs=request.epochs,
+            init_fn=request.init_fn,
+        )
+
+        # Train the network
+        for epoch in range(network.epochs):
+            network.train(request.data, request.labels)
+            await websocket.send_json({"status": "training", "epoch": epoch + 1})
+            await asyncio.sleep(1)  # Simulate training time
+
+        await websocket.send_json({"status": "completed"})
+    except Exception as e:
+        await websocket.send_json({"status": "error", "message": str(e)})
+    finally:
+        await websocket.close()

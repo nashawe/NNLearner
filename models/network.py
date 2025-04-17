@@ -7,7 +7,7 @@ from utils.testing import test_model_loop
 import os
 
 class NeuralNetwork:
-    def __init__(self, input_size, hidden_size, num_layers, output_size, config, dropout_rate=0, init_fn=None, optimizer_choice=1):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, config, dropout_rate=0,init_fn=None, optimizer_choice=1):
         self.hidden_activation = config["hidden_activation"]
         self.hidden_deriv = config["hidden_deriv"]
         self.output_activation = config["output_activation"]
@@ -187,7 +187,11 @@ class NeuralNetwork:
             y_preds = np.array([self.feedforward(x) for x in data])
             acc = multiclass_accuracy(all_y_trues, y_preds)
             print(f"\nFinal Training Metrics:")
-            print(f"Multiclass Accuracy: {acc:.4f}")
+            self.final_metrics = {
+            "accuracy": acc,
+            "loss": loss_history[-1] if loss_history else None
+            }
+
             
         self.loss_history = loss_history
         self.accuracy_history = accuracy_history
@@ -215,16 +219,18 @@ class NeuralNetwork:
             sample_total += len(layer)
 
         y_pred = self.feedforward(x)
+        if self.output_size == 1:
+            y_pred = y_pred[0]  # flatten from [0.9] to 0.9
+
         dZ_outs = []
         zs = []
         #iterate through each output neuron (like its a layer)
-        if not isinstance(y_true, (list, np.ndarray)):
-            y_true = np.array([y_true])
-        else:
-            y_true = np.array(y_true)
+        y_true = np.array(y_true, dtype=np.float64)
 
-        if y_true.shape[0] != self.output_size:
-            raise ValueError(f"Expected y_true to have {self.output_size} values, but got {y_true.shape[0]} instead.")
+        #Unwrap for binary classification (output_size = 1)
+        if self.output_size == 1 and y_true.shape == (1,):
+            y_true = y_true[0]
+
 
         for i, neuron in enumerate(self.output_layer):
             z = np.dot(neuron.weights, activations[-1]) + neuron.bias
@@ -232,22 +238,32 @@ class NeuralNetwork:
             if self.output_deriv is None:
                 dZ = self.loss_grad(y_pred, y_true)[i]
             else:
-                error = self.loss_grad(y_pred[i], y_true[i])
+                if self.output_size == 1:
+                    error = self.loss_grad(y_pred, y_true)
+                else:
+                    error = self.loss_grad(y_pred[i], y_true[i])
                 dZ = error * self.output_deriv(z)
             dZ_outs.append(dZ)            
         
         for i, neuron in enumerate(self.output_layer):
-            grads = dZ_outs[i] * np.array(activations[-1])
-            bias_grad = dZ_outs[i]
-            
-            if self.optimizer_choice == 1:
-                neuron.weights -= learn_rate * grads
-                neuron.bias -= learn_rate * bias_grad
+            z = np.dot(neuron.weights, activations[-1]) + neuron.bias
+            zs.append(z)
+
+            if self.output_size == 1:
+                if self.output_deriv is None:
+                    dZ = self.loss_grad(y_pred, y_true)
+                else:
+                    error = self.loss_grad(y_pred, y_true)
+                    dZ = error * self.output_deriv(z)
             else:
-                key = f"output_{i}"
-                w, b = self._update_weights(key, neuron.weights, grads, neuron.bias, bias_grad, learn_rate)
-                neuron.weights = w
-                neuron.bias = b
+                if self.output_deriv is None:
+                    dZ = self.loss_grad(y_pred, y_true)[i]
+                else:
+                    error = self.loss_grad(y_pred[i], y_true[i])
+                    dZ = error * self.output_deriv(z)
+
+            dZ_outs.append(dZ)
+
             
         grad = np.zeros_like(activations[-1], dtype=np.float64)
         

@@ -55,11 +55,10 @@ const SelectBox = ({ label, value, options, onChange }) => (
  * 3) Expands to full-screen on "Train Model" with a repeating animation
  */
 const BuildTrainPage = () => {
+  // For configuration
   const [numLayers, setNumLayers] = useState(3);
   const [neuronsPerLayer, setNeuronsPerLayer] = useState(8);
   const [learningRate, setLearningRate] = useState("0.01");
-  const [activationFn, setActivationFn] = useState("ReLU");
-  const [lossFn, setLossFn] = useState("Cross-Entropy");
   const [optimizer, setOptimizer] = useState("Adam");
   const [dropout, setDropout] = useState("0.2");
   const [batchSize, setBatchSize] = useState("32");
@@ -71,6 +70,10 @@ const BuildTrainPage = () => {
   const [filename, setFilename] = useState("latest_model.npz");
   const [dataInput, setDataInput] = useState("");
   const [labelsInput, setLabelsInput] = useState("");
+  const [init_fn, setInitFn] = useState("Xavier");
+
+  // For training results
+  const [trainingResults, setTrainingResults] = useState(null);
 
   // For overlay
   const [zoomed, setZoomed] = useState(false);
@@ -107,13 +110,32 @@ const BuildTrainPage = () => {
         .split("\n")
         .map((line) => line.split(",").map((val) => parseFloat(val)));
 
-      const labels = labelsInput
+      let rawLabels = labelsInput
         .trim()
         .split(",")
-        .map((val) => {
-          const parsed = parseFloat(val);
-          return isNaN(parsed) ? val : parsed;
+        .map((val) => parseFloat(val));
+
+      let labels;
+
+      if (parseInt(outputSize) === 1) {
+        const invalidLabels = rawLabels.filter(
+          (label) => label !== 0 && label !== 1
+        );
+        if (invalidLabels.length > 0) {
+          alert(
+            "Error: For binary classification (output size = 1), labels must be 0 or 1."
+          );
+          return;
+        }
+        labels = rawLabels.map((label) => [label]); // ✅ wrap in array to match (1,) shape
+      } else {
+        const numClasses = parseInt(outputSize);
+        labels = rawLabels.map((label) => {
+          const vec = new Array(numClasses).fill(0);
+          vec[label] = 1;
+          return vec;
         });
+      }
 
       // 3. Prepare payload
       const payload = {
@@ -129,6 +151,7 @@ const BuildTrainPage = () => {
         learning_rate: parseFloat(learningRate),
         epochs: parseInt(epochs),
         data,
+        init_fn: parseInt(init_fn),
         labels,
         save_after_train: saveModel,
         filename,
@@ -148,7 +171,14 @@ const BuildTrainPage = () => {
       const result = await response.json();
       console.log("✅ Training result:", result);
 
-      // You can use result.loss_history or accuracy_history to plot later
+      // ⬇️ STOP the animation loop...
+      setIsTraining(false);
+      // ⬇️ CLOSE the full‑screen overlay...
+      setZoomed(false);
+      // ⬇️ SAVE the training payload so we can render it
+      setTrainingResults(result);
+
+      // Can use result.loss_history or accuracy_history to plot later
     } catch (error) {
       console.error("❌ Error during training:", error);
       alert("Training failed. Check console for details.");
@@ -169,15 +199,19 @@ const BuildTrainPage = () => {
         <div className="p-4 md:p-6 border-r border-gray-300 max-h-[calc(100vh-120px)] overflow-y-auto sticky top-[100px]">
           <h2 className="text-lg font-semibold mb-4">Network Configuration</h2>
           <div className="space-y-4">
-            <InputBox
+            <InputSlider
               label="Input Size"
               value={inputSize}
-              onChange={(e) => setInputSize(e.target.value)}
+              onChange={(e) => setInputSize(parseInt(e.target.value))}
+              min={1}
+              max={10}
             />
-            <InputBox
+            <InputSlider
               label="Output Size"
               value={outputSize}
-              onChange={(e) => setOutputSize(e.target.value)}
+              onChange={(e) => setOutputSize(parseInt(e.target.value))}
+              min={1}
+              max={10}
             />
             <InputBox
               label="Epochs"
@@ -205,7 +239,7 @@ const BuildTrainPage = () => {
             />
             <SelectBox
               label="Model Mode (Activation + Loss)"
-              value={mode}
+              value={mode} // Ensure this is tied to the state
               options={[
                 "1 - Sigmoid + MSE",
                 "2 - Sigmoid + Binary Cross-Entropy",
@@ -213,7 +247,13 @@ const BuildTrainPage = () => {
                 "4 - ReLU + Sigmoid + BCE",
                 "5 - ReLU + Softmax + Cross-Entropy",
               ]}
-              onChange={(e) => setMode(e.target.value.split(" ")[0])}
+              onChange={(e) => setMode(e.target.value)} // Update state with the selected value
+            />
+            <SelectBox
+              label="Weight Initialization Function"
+              value={init_fn}
+              options={["Xavier", "He", "Uniform"]}
+              onChange={(e) => setInitFn(e.target.value)}
             />
             <SelectBox
               label="Optimizer"
@@ -246,7 +286,6 @@ Example:
 4,5,6"
               />
             </div>
-
             <div className="mt-4">
               <label className="text-sm font-medium block mb-1">Labels</label>
               <textarea
@@ -257,7 +296,6 @@ Example:
                 placeholder="Comma-separated labels (e.g. 0,1,1,0)"
               />
             </div>
-
             <button
               onClick={handleSubmit}
               className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-md transition-all duration-200 shadow hover:shadow-md"
@@ -296,8 +334,8 @@ Example:
           <div className="w-[600px] h-[500px] border border-gray-300 rounded">
             <NetworkVisualizer
               ref={visualizerRef}
-              inputSize={4}
-              outputSize={2}
+              inputSize={parseInt(inputSize)}
+              outputSize={parseInt(outputSize)}
               numLayers={numLayers}
               neuronsPerLayer={neuronsPerLayer}
             />
@@ -307,6 +345,58 @@ Example:
           </p>
         </div>
       </div>
+
+      {/* --- TRAINING SUMMARY --- */}
+      {trainingResults && (
+        <div className="mt-6 p-4 bg-white border rounded shadow">
+          <h2 className="text-xl font-semibold mb-2">🎉 Training Complete!</h2>
+          <p className="text-sm">
+            Training ID: <code>{trainingResults.training_id}</code>
+          </p>
+          {trainingResults.accuracy !== undefined && (
+            <p className="text-sm">
+              Final Accuracy: {(trainingResults.accuracy * 100).toFixed(2)}%
+            </p>
+          )}
+          {trainingResults.loss !== undefined && (
+            <p className="text-sm">
+              Final Loss: {trainingResults.loss.toFixed(6)}
+            </p>
+          )}
+
+          {trainingResults.loss_history && (
+            <>
+              <h3 className="mt-4 font-medium">Loss History:</h3>
+              <ul className="list-disc list-inside text-sm max-h-48 overflow-y-auto">
+                {trainingResults.loss_history.map((loss, idx) => (
+                  <li key={idx}>
+                    Epoch {idx * 100}: {loss.toFixed(6)}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {trainingResults.accuracy_history && (
+            <>
+              <h3 className="mt-4 font-medium">Accuracy History:</h3>
+              <ul className="list-disc list-inside text-sm max-h-48 overflow-y-auto">
+                {trainingResults.accuracy_history.map((acc, idx) => (
+                  <li key={idx}>
+                    Epoch {idx * 100}: {(acc * 100).toFixed(2)}%
+                  </li>
+                ))}
+                {trainingResults.accuracy_history?.length === 0 && (
+                  <p className="text-sm italic text-gray-500">
+                    No accuracy data available for this setup.
+                  </p>
+                )}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Fullscreen Overlay */}
       <LayoutGroup>
         <AnimatePresence>
@@ -321,8 +411,8 @@ Example:
               <div className="w-[90%] h-[80%] border border-gray-300 rounded">
                 <NetworkVisualizer
                   ref={visualizerRef}
-                  inputSize={4}
-                  outputSize={2}
+                  inputSize={inputSize}
+                  outputSize={outputSize}
                   numLayers={numLayers}
                   neuronsPerLayer={neuronsPerLayer}
                 />
