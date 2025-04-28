@@ -1,7 +1,13 @@
 import { motion } from "framer-motion";
 import { useInView } from "react-intersection-observer";
 
-export default function FeatureSection({ title, description, Icon, bgColor }) {
+export default function FeatureSection({
+  title,
+  description,
+  Icon,
+  bgColor,
+  isFirst = false,
+}) {
   const { ref, inView } = useInView({
     triggerOnce: false,
     threshold: 0.2,
@@ -13,7 +19,9 @@ export default function FeatureSection({ title, description, Icon, bgColor }) {
       initial={{ opacity: 0, y: 50, scale: 0.95 }}
       animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
       transition={{ duration: 0.8, ease: "easeOut" }}
-      className={`max-w-5xl mx-auto my-32 px-10 py-16 rounded-2xl shadow-md border border-gray-300 ${bgColor} flex flex-col md:flex-row items-center text-center md:text-left gap-10`}
+      className={`max-w-5xl mx-auto ${
+        isFirst ? "mt-12" : "my-32"
+      } px-10 py-16 rounded-2xl shadow-md border border-gray-300 ${bgColor} flex flex-col md:flex-row items-center text-center md:text-left gap-10`}
     >
       {/* Icon Side */}
       <div className="flex-shrink-0">

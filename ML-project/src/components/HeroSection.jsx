@@ -2,21 +2,12 @@ import { motion } from "framer-motion";
 
 export default function HeroSection() {
   return (
-    <div className="min-h-screen w-full bg-white flex flex-col">
+    <div className="min-h-[80vh] w-full bg-white flex flex-col">
       {/* Header */}
-      <div className="flex justify-end p-8">
-        <motion.button
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          className="px-6 py-2 rounded-full border border-black text-black font-semibold hover:bg-black hover:text-white transition-colors duration-300"
-        >
-          About Me
-        </motion.button>
-      </div>
+      <div className="flex justify-end p-8"></div>
 
       {/* Hero Content */}
-      <div className="flex flex-col items-center text-center px-6 mt-20">
+      <div className="flex flex-col items-center text-center px-6 mt-[20px]">
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -43,7 +34,7 @@ export default function HeroSection() {
           whileHover={{ scale: 1.05 }}
           className="px-8 py-3 rounded-full bg-black text-white font-semibold text-lg hover:bg-gray-800 transition-colors duration-300"
         >
-          Get Started
+          Get Started with Praxis
         </motion.button>
       </div>
     </div>
