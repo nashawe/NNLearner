@@ -26,7 +26,7 @@ export default function FeatureSection({
 
   return (
     <motion.div
-      whileHover={{ scale: 1.1 }}
+      whileHover={{ scale: 1.1, y: -10 }}
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

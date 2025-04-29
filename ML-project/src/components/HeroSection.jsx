@@ -5,7 +5,7 @@ export default function HeroSection() {
   return (
     <div className="min-h-[80vh] w-full bg-white flex flex-col">
       {/* Header */}
-      <div className="flex justify-end pt-[10px] pb-8"></div>
+      <div className="flex justify-end pt-[30px] pb-[50px]"></div>
 
       {/* Hero Content */}
       <div className="flex flex-col items-center text-center px-6 mt-[10px]">
@@ -18,7 +18,7 @@ export default function HeroSection() {
           Build. Train. Understand.
         </motion.h1>
 
-        <p className="mt-2 text-xl text-gray-600 max-w-2xl mx-auto">
+        <p className="mt-[25px] mb-[25px] text-xl text-gray-600 max-w-2xl mx-auto">
           Praxis lets you design, train, and visualize neural networks from
           scratch — no code, just real understanding.
         </p>
@@ -43,7 +43,7 @@ export default function HeroSection() {
           }
           animate={{ y: [0, 10, 0] }}
           transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
-          className="mt-10 flex flex-col items-center text-black/70 cursor-pointer"
+          className="mt-[60px] flex flex-col items-center text-black/70 cursor-pointer"
         >
           <span className="mb-1 text-sm font-medium">Learn More</span>
           <ChevronDown size={32} />
