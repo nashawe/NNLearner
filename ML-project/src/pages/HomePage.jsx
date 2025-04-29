@@ -133,12 +133,12 @@ function Navbar() {
 // HeroSection component
 function HeroSection() {
   return (
-    <div className="min-h-[80vh] w-full bg-white flex flex-col">
+    <div className="min-h-[80vh] bg-white flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex justify-end pt-[30px] pb-[50px]"></div>
 
       {/* Hero Content */}
-      <div className="flex flex-col items-center text-center px-6 mt-[10px]">
+      <div className="flex flex-col items-center text-center px-0 mt-[10px]">
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -166,11 +166,7 @@ function HeroSection() {
         </div>
 
         <motion.button
-          onClick={() =>
-            document
-              .getElementById("features")
-              .scrollIntoView({ behavior: "smooth", block: "start" })
-          }
+          onClick={() => window.scrollBy({ top: 760, behavior: "smooth" })}
           animate={{ y: [0, 10, 0] }}
           transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
           className="mt-[60px] flex flex-col items-center text-black/70 cursor-pointer"
@@ -209,7 +205,7 @@ function FeatureSection({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={`max-w-[900px] mx-auto ${
-        isFirst ? "mt-5 mb-3" : "mt-20 mb-4"
+        isFirst ? "mt-20 mb-3" : "mt-20 mb-4"
       } px-10 py-[50px] rounded-2xl shadow-md border border-gray-300 ${bgColor}
         flex flex-col md:flex-row items-center text-center md:text-left gap-10
         transition-colors duration-300`}
@@ -251,7 +247,7 @@ function FeatureSection({
 // Footer component
 function Footer() {
   return (
-    <footer className="w-full bg-white border-t border-gray-200 py-8">
+    <footer className="w-full bg-sky-150 border-t border-grey-100 py-8">
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-center text-gray-600 text-sm">
         <div className="mb-4 md:mb-0">© 2025 Praxis. All rights reserved.</div>
         <div className="flex space-x-6">
@@ -278,7 +274,7 @@ export default function HomePage() {
       <Navbar />
       <HeroSection />
 
-      <div id="features" className="bg-white">
+      <div id="features" className="bg-white pb-10 pt-0">
         <FeatureSection
           title="Build Custom Models"
           description="Customize layers, neurons, and activation functions easily."
@@ -292,9 +288,7 @@ export default function HomePage() {
             "Input binary or multi-class data and labels for training and testing",
           ]}
         />
-      </div>
 
-      <div className="bg-white">
         <FeatureSection
           title="Train and Visualize"
           description="Watch your models learn and evolve over time."
@@ -307,9 +301,7 @@ export default function HomePage() {
             "Compare different models and their training outcomes",
           ]}
         />
-      </div>
 
-      <div className="bg-white pb-10">
         <FeatureSection
           title="Learn with Praxis"
           description="Explore tutorials and resources to enhance your skills."
