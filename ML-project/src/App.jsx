@@ -1,11 +1,18 @@
 import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./pages/HomePage";
+import BuildPage from "./pages/BuildPage";
 
 function App() {
   return (
-    <div className="min-h-screen bg-white text-black">
-      <HomePage />
-    </div>
+    <Router>
+      <div className="min-h-screen bg-white text-black">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/build" element={<BuildPage />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

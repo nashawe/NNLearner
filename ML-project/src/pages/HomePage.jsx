@@ -8,6 +8,7 @@ import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Blocks, Rocket, Paperclip, ChevronDown } from "lucide-react";
 import PraxisLogo from "../assets/praxis-logo.svg";
+import { useNavigate } from "react-router-dom";
 
 // Navbar component
 function Navbar() {
@@ -56,7 +57,7 @@ function Navbar() {
 
       <div
         ref={iconRef}
-        className="hidden md:flex gap-12 pl-[90px] justify-center text-md text-black"
+        className="hidden md:flex gap-3 pl-[90px] justify-center text-md text-black"
       >
         {iconList.map(({ icon: Icon, label }, i) => (
           <motion.button
@@ -132,6 +133,7 @@ function Navbar() {
 
 // HeroSection component
 function HeroSection() {
+  const navigate = useNavigate();
   return (
     <div className="min-h-[80vh] bg-white flex flex-col overflow-hidden">
       {/* Header */}
@@ -155,6 +157,7 @@ function HeroSection() {
 
         <div className="flex flex-row justify-center items-center gap-4 mt-8">
           <motion.button
+            onClick={() => navigate("/build")}
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
@@ -254,7 +257,10 @@ function Footer() {
           <a href="#" className="hover:text-black transition-colors">
             About
           </a>
-          <a href="#" className="hover:text-black transition-colors">
+          <a
+            href="https://github.com/nashawe/Neural-Network"
+            className="hover:text-black transition-colors"
+          >
             GitHub
           </a>
           <a href="#" className="hover:text-black transition-colors">
