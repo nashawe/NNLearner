@@ -1,4 +1,4 @@
-// BuildPage.jsx – compact left panel layout
+// BuildPage.jsx – monochrome premium v2 (white bg, extra chunky UI)
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,22 +9,23 @@ const LAYER_TYPES = {
   OUTPUT: "output",
 };
 
-const LayerCard = ({ layer, idx, onHover, hovered }) => (
+const layerTone = {
+  [LAYER_TYPES.INPUT]: "bg-gray-800",
+  [LAYER_TYPES.HIDDEN]: "bg-gray-700",
+  [LAYER_TYPES.OUTPUT]: "bg-gray-900",
+};
+
+const LayerCard = ({ layer, idx, hovered, onHover }) => (
   <motion.div
+    layout
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: 20 }}
     onMouseEnter={() => onHover(layer)}
     onMouseLeave={() => onHover(null)}
-    layout
-    className={`relative w-64 h-12 rounded-lg flex items-center justify-center font-semibold text-white transition ${
-      hovered?.id === layer.id
-        ? "scale-105 shadow-2xl"
-        : "shadow-md hover:scale-105 hover:shadow-xl"
-    } ${
-      layer.type === LAYER_TYPES.INPUT
-        ? "bg-indigo-600"
-        : layer.type === LAYER_TYPES.OUTPUT
-        ? "bg-emerald-600"
-        : "bg-sky-600"
-    }`}
+    className={`relative w-80 h-20 rounded-2xl flex items-center justify-center font-semibold tracking-wide uppercase text-white text-xl transition-all duration-300 cursor-pointer shadow-xl hover:shadow-2xl hover:-translate-y-1 ${
+      layerTone[layer.type]
+    } ${hovered?.id === layer.id ? "scale-110 ring-4 ring-black/20" : ""}`}
   >
     {layer.type === LAYER_TYPES.INPUT
       ? "Input Layer"
@@ -71,22 +72,35 @@ export default function BuildPage() {
 
   const ready = Boolean(summary.output_size);
 
+  /* ------------------------ reusable styles ------------------------ */
+  const sideButton =
+    "w-full py-4 rounded-2xl bg-black text-white text-xl font-bold tracking-wide shadow-lg transition duration-300 hover:bg-white hover:text-black hover:ring-4 hover:ring-black focus:outline-none";
+
   return (
-    <div className="w-full h-screen bg-white grid grid-cols-[280px_1fr]">
-      {/* compact left panel */}
-      <div className="border-r border-gray-200 flex flex-col">
-        <div className="p-4 space-y-5 text-gray-900">
-          {/* neuron control – slider + input inline */}
-          <div className="space-y-1">
-            <label className="block text-sm font-medium">Neuron Count</label>
-            <div className="flex items-center gap-3">
+    <div className="w-full h-screen bg-white grid grid-cols-[360px_1fr] text-black font-sans">
+      {/* ------------ LEFT PANEL ------------- */}
+      <aside className="flex flex-col h-full bg-black text-white border-r border-black/10">
+        {/* header */}
+        <div className="p-7 pb-5 flex items-center gap-4 text-3xl font-extrabold uppercase tracking-wider">
+          <span className="inline-block w-4 h-4 rounded-full bg-white animate-pulse" />
+          Builder
+        </div>
+
+        {/* controls */}
+        <div className="flex-1 overflow-y-auto px-7 space-y-12 scrollbar-thin scrollbar-thumb-black/30 scrollbar-track-transparent">
+          {/* neuron slider */}
+          <div className="space-y-6">
+            <label className="block text-xl font-semibold uppercase tracking-wide">
+              Neurons
+            </label>
+            <div className="flex items-center gap-6">
               <input
                 type="range"
                 min={1}
                 max={256}
                 value={draftNeurons}
                 onChange={(e) => setDraftNeurons(Number(e.target.value))}
-                className="flex-1 accent-indigo-500"
+                className="flex-1 accent-white h-4 rounded-lg appearance-none cursor-pointer bg-white/20"
               />
               <input
                 type="number"
@@ -94,72 +108,59 @@ export default function BuildPage() {
                 max={256}
                 value={draftNeurons}
                 onChange={(e) => setDraftNeurons(Number(e.target.value))}
-                className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
+                className="w-28 text-center text-black font-bold text-lg rounded-xl py-2 focus:outline-none"
               />
             </div>
           </div>
 
-          {/* buttons – tight gap */}
-          <div className="space-y-3">
+          {/* action buttons */}
+          <div className="space-y-6">
             {mode === "input" && (
-              <button
-                onClick={publishInput}
-                className="w-full py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow"
-              >
+              <button onClick={publishInput} className={sideButton}>
                 Add Input Layer
               </button>
             )}
             {mode === "hidden" && (
               <>
-                <button
-                  onClick={publishHidden}
-                  className="w-full py-2 rounded bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow"
-                >
+                <button onClick={publishHidden} className={sideButton}>
                   Add Hidden Layer
                 </button>
-                <button
-                  onClick={finishHidden}
-                  className="w-full py-2 rounded bg-lime-600 hover:bg-lime-700 text-white font-semibold shadow"
-                >
+                <button onClick={finishHidden} className={sideButton}>
                   Start Output Layer
                 </button>
               </>
             )}
             {mode === "output" && (
-              <button
-                onClick={publishOutput}
-                className="w-full py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow"
-              >
+              <button onClick={publishOutput} className={sideButton}>
                 Add Output Layer
               </button>
             )}
           </div>
-        </div>
 
-        {/* summary compress */}
-        <div className="mt-auto p-4 bg-gray-50 border-t border-gray-200 text-sm text-gray-800 space-y-1">
-          <div className="flex justify-between">
-            <span>input_size</span>
-            <span className="font-semibold">{summary.input_size}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>hidden_size</span>
-            <span className="font-semibold">{summary.hidden_size}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>num_layers</span>
-            <span className="font-semibold">{summary.num_layers}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>output_size</span>
-            <span className="font-semibold">{summary.output_size}</span>
+          {/* summary */}
+          <div className="space-y-3 pt-6 border-t border-white/10">
+            {[
+              ["Input Size", summary.input_size],
+              ["Hidden Neurons", summary.hidden_size],
+              ["Layers", summary.num_layers + 2],
+              ["Hidden Layers", summary.num_layers],
+              ["Output Size", summary.output_size],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="flex justify-between text-base tracking-wide"
+              >
+                <span>{label}</span>
+                <span className="font-semibold">{value}</span>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* main visualizer unchanged */}
-      <div className="relative overflow-auto">
-        <div className="flex flex-col items-center py-16 gap-4">
+      {/* ------------ MAIN VISUALIZER ------------- */}
+      <main className="relative overflow-auto flex justify-center">
+        <div className="flex flex-col items-center py-24 gap-8">
           {layers.map((layer, idx) => (
             <React.Fragment key={layer.id}>
               <LayerCard
@@ -169,42 +170,46 @@ export default function BuildPage() {
                 onHover={setHovered}
               />
               {idx !== layers.length - 1 && (
-                <div className="w-px h-6 bg-gray-400" />
+                <div className="w-px h-12 bg-black/20" />
               )}
             </React.Fragment>
           ))}
         </div>
 
-        {/* hover detail panel */}
+        {/* hover detail */}
         <AnimatePresence>
           {hovered && (
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="absolute top-1/2 right-6 -translate-y-1/2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-56 space-y-1"
+              exit={{ opacity: 0, x: 40 }}
+              className="absolute top-1/2 right-14 -translate-y-1/2 w-72 p-6 rounded-3xl bg-black/90 backdrop-blur-lg shadow-2xl border border-white/10 text-white"
             >
-              <div className="font-semibold text-gray-700 capitalize text-sm">
+              <div className="text-2xl font-bold capitalize mb-3 tracking-wider">
                 {hovered.type} layer
               </div>
-              <div className="text-sm text-gray-600">
-                <span className="font-medium">{hovered.neurons}</span> neuron(s)
+              <div className="text-xl font-medium">
+                {hovered.neurons} neuron{hovered.neurons === 1 ? "" : "s"}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <button
+        {/* continue button */}
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileHover={ready ? { scale: 1.07 } : {}}
           disabled={!ready}
-          className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-3 rounded-full font-semibold shadow-md transition ${
+          className={`fixed bottom-10 right-10 px-14 py-5 rounded-full font-extrabold tracking-wide shadow-2xl transition-all duration-300 uppercase text-xl ${
             ready
-              ? "bg-green-600 hover:bg-green-700 text-white"
-              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              ? "bg-black text-white hover:bg-white hover:text-black border-4 border-black"
+              : "bg-black/20 text-black/40 cursor-not-allowed border-4 border-black/20"
           }`}
         >
           Continue
-        </button>
-      </div>
+        </motion.button>
+      </main>
     </div>
   );
 }
