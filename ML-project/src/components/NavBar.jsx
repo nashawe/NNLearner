@@ -1,86 +1,78 @@
-// NavBar.jsx
-import { useState, useEffect, useRef } from "react";
+import React from "react";
 import { motion } from "framer-motion";
-import { Blocks, Rocket, Paperclip } from "lucide-react";
+import { CheckCircle, Circle } from "lucide-react";
 import PraxisLogo from "../assets/praxis-logo.svg";
-import { NavLink } from "react-router-dom";
 
-export default function Navbar() {
-  const [sticky, setSticky] = useState(false);
-  const iconRef = useRef(null);
-  const [triggerY, setTriggerY] = useState(0);
-  const iconList = [
-    { icon: Blocks, label: "Build", path: "/build" },
-    { icon: Rocket, label: "Train", path: "/train" },
-    { icon: Paperclip, label: "Learn", path: "/learn" },
-  ];
-  const SCROLL_BUFFER = 20;
+const steps = [
+  { id: 1, label: "build architecture" },
+  { id: 2, label: "tune hyperparameters" },
+  { id: 3, label: "select type" },
+  { id: 4, label: "input data" },
+  { id: 5, label: "view summary" },
+];
 
-  useEffect(() => {
-    if (iconRef.current) {
-      const rect = iconRef.current.getBoundingClientRect();
-      setTriggerY(window.scrollY + rect.bottom - SCROLL_BUFFER);
-    }
-  }, []);
-
-  useEffect(() => {
-    const onScroll = () => setSticky(window.scrollY > triggerY);
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [triggerY]);
-
+export default function NavBar({ currentStep }) {
   return (
-    <nav className="w-full flex items-center justify-between px-4 md:px-6 pt-3 pb-0 bg-white relative">
-      {/* logo */}
-      <motion.div
-        className={`flex items-center gap-2 transition-opacity duration-300 ${
-          sticky ? "opacity-0 pointer-events-none" : "opacity-100"
-        }`}
-      >
-        <img src={PraxisLogo} alt="Praxis Logo" className="w-32 h-32" />
-      </motion.div>
+    <nav className="w-full bg-white flex items-center justify-between border-b px-6 py-3">
+      {/* "Place your SVG logo here" */}
+      <img src={PraxisLogo} alt="Praxis Logo" className="w-32 h-32" />
 
-      {/* icon nav */}
-      <div
-        ref={iconRef}
-        className={`hidden md:flex gap-10 justify-center text-md text-black transition-all fixed left-1/2 transform -translate-x-1/2 ${
-          sticky
-            ? "top-5 z-50 gap-3 bg-white py-3 px-5 shadow-lg rounded-3xl overflow-clip"
-            : "top-10"
-        }`}
-      >
-        {iconList.map(({ icon: Icon, label, path }, i) => (
-          <motion.button
-            key={i}
-            whileHover={{
-              scale: 1.15,
-              y: -5,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-            }}
-            className="flex flex-col items-center px-5 py-2 rounded-xl ease-[cubic-bezier(0.25,1,0.5,1)] transition-all duration-300"
-            onClick={() => (window.location.href = path)}
-          >
-            <div className="w-10 h-10 flex items-center justify-center bg-white rounded-xl">
-              <Icon size={25} />
-            </div>
-            <span className="mt-1">{label}</span>
-          </motion.button>
-        ))}
+      <div className="flex-1 flex justify-center relative">
+        <ul className="flex items-center">
+          {steps.map((step, index) => {
+            const active = step.id === currentStep;
+            const completed = step.id < currentStep;
+            return (
+              <li key={step.id} className="flex items-center">
+                {/* line before circle except first */}
+                {index > 0 && (
+                  <motion.div
+                    className="h-0.5 flex-1"
+                    initial={{ backgroundColor: "#d1d5db" }}
+                    animate={{
+                      backgroundColor: completed ? "#000000" : "#d1d5db",
+                    }}
+                    transition={{ duration: 0.3 }}
+                  />
+                )}
+                <div className="flex flex-col items-center">
+                  <motion.div
+                    initial={{ opacity: 0.5, scale: 0.8 }}
+                    animate={{
+                      opacity: active || completed ? 1 : 0.5,
+                      scale: active ? 1.2 : 1,
+                    }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="mb-1"
+                  >
+                    {completed || active ? (
+                      <CheckCircle
+                        size={24}
+                        className={active ? "text-black" : "text-gray-400"}
+                      />
+                    ) : (
+                      <Circle size={24} className="text-gray-400" />
+                    )}
+                  </motion.div>
+
+                  <motion.span
+                    initial={{ color: "#9CA3AF" }}
+                    animate={{ color: active ? "#000000" : "#9CA3AF" }}
+                    transition={{ duration: 0.3 }}
+                    className="text-xs tracking-wide text-center uppercase"
+                  >
+                    {step.label}
+                  </motion.span>
+                </div>
+                {/* line after circle except last */}
+                {index < steps.length - 1 && <div className="w-4" />}
+              </li>
+            );
+          })}
+        </ul>
       </div>
 
-      {/* login/signup */}
-      <div
-        className={`hidden md:flex items-center gap-4 transition-opacity duration-300 ${
-          sticky ? "opacity-0 pointer-events-none" : "opacity-100"
-        }`}
-      >
-        <motion.button className="px-6 py-2 rounded-full border border-black font-semibold hover:bg-black hover:text-white transition-colors duration-300">
-          Log In
-        </motion.button>
-        <motion.button className="px-6 py-2 rounded-full border border-black font-semibold hover:bg-black hover:text-white transition-colors duration-300">
-          Sign Up
-        </motion.button>
-      </div>
+      <div className="flex-shrink-0" />
     </nav>
   );
 }
