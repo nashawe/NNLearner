@@ -1,0 +1,314 @@
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { v4 as uuidv4 } from "uuid";
+import ProgressBar from "../components/ProgressBar";
+import SettingsPage from "./SettingsPage";
+
+import {
+  ArrowRight,
+  ArrowLeftCircle,
+  RotateCcw,
+  RefreshCcw,
+  Info,
+  ArrowRightCircle,
+} from "lucide-react";
+
+/* ───────── constants ───────── */
+const MAX_HIDDEN = 10;
+const MAX_VISIBLE_CIRCLES = 10;
+const MIN_BOX_HEIGHT = 80;
+const MAX_BOX_HEIGHT = 360;
+const CIRCLE_SIZE = 26;
+
+/* ───────── helpers ───────── */
+const nextLayerType = (layers) => {
+  const hasInput = layers.some((l) => l.type === "input");
+  const hasOutput = layers.some((l) => l.type === "output");
+  const hiddenCnt = layers.filter((l) => l.type === "hidden").length;
+
+  if (!hasInput) return "input";
+  if (!hasOutput && hiddenCnt === 0) return "hidden"; // force at least one hidden
+  if (!hasOutput && hiddenCnt >= 1) return "output";
+  return null;
+};
+
+const canAdd = (layers) => {
+  const nt = nextLayerType(layers);
+  return nt === "input" || nt === "hidden";
+};
+
+export default function ArchitecturePage() {
+  const [layers, setLayers] = useState([]);
+  const [currentStep, setCurrentStep] = useState(1); // 1-Arch, 2-Settings
+  const [neuronCount, setNeuronCount] = useState(16);
+
+  /* ───────── deployment ───────── */
+  const deployLayer = (type) => {
+    if (
+      type === "hidden" &&
+      layers.some((l) => l.type === "hidden" && l.neurons !== neuronCount)
+    )
+      return;
+    setLayers((prev) => [
+      ...prev,
+      { id: uuidv4(), type, neurons: neuronCount },
+    ]);
+  };
+
+  const handleDeploy = () => {
+    const nt = nextLayerType(layers);
+    if (nt) deployLayer(nt);
+  };
+
+  /* ───────── undo & reset ───────── */
+  const undo = () => setLayers((prev) => prev.slice(0, -1));
+  const reset = () => setLayers([]);
+
+  /* ───────── derived ───────── */
+  const inputLayer = layers.find((l) => l.type === "input");
+  const hiddenLayers = layers.filter((l) => l.type === "hidden");
+  const outputLayer = layers.find((l) => l.type === "output");
+
+  const derivedStep = !inputLayer ? 1 : outputLayer ? 3 : 2;
+  const isOutputStage = nextLayerType(layers) === "output";
+
+  /* ───────── UI switcher ───────── */
+  if (currentStep === 2) {
+    return (
+      <>
+        <ProgressBar currentStep={2} />
+        <SettingsPage
+          onBack={() => setCurrentStep(1)}
+          onContinue={() => setCurrentStep(3)} // placeholder for next page
+        />
+      </>
+    );
+  }
+  /* ───────── UI ───────── */
+  return (
+    <>
+      <ProgressBar currentStep={currentStep} />
+
+      {currentStep === 2 ? (
+        <SettingsPage
+          onBack={() => setCurrentStep(1)}
+          onContinue={() => setCurrentStep(3)} // next step placeholder
+        />
+      ) : (
+        <div className="w-full relative flex h-[calc(100vh-88px)]">
+          {/* ───── side panel ───── */}
+          {/* ───── side panel ───── */}
+          <div className="w-64 p-6 border-r border-gray-300 flex flex-col gap-6 shrink-0">
+            {/* progress dots */}
+            <div className="flex flex-col gap-4">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="flex items-center gap-2">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
+                      derivedStep === n
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-200 text-gray-500"
+                    }`}
+                  >
+                    {n}
+                  </div>
+                  <span
+                    className={`text-sm ${
+                      derivedStep === n ? "font-semibold" : "text-gray-500"
+                    }`}
+                  >
+                    {n === 1 && "Input"}
+                    {n === 2 && "Hidden"}
+                    {n === 3 && "Output"}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* neuron slider */}
+            <div className="flex flex-col gap-3">
+              <label className="text-xs font-semibold uppercase tracking-wide">
+                Neuron Count
+              </label>
+              <input
+                type="range"
+                min={2}
+                max={128}
+                value={neuronCount}
+                onChange={(e) => setNeuronCount(parseInt(e.target.value))}
+                className="w-full"
+              />
+              <div className="text-center text-sm font-medium">
+                {neuronCount} neurons
+              </div>
+            </div>
+
+            {/* deploy buttons */}
+            <div className="flex flex-col gap-2">
+              {!inputLayer && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => deployLayer("input")}
+                  className="bg-gray-900 text-white rounded-full py-2 font-semibold shadow"
+                >
+                  Deploy INPUT Layer
+                </motion.button>
+              )}
+
+              {/* add hidden until MAX_HIDDEN reached and no output yet */}
+              {!outputLayer && hiddenLayers.length < MAX_HIDDEN && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => deployLayer("hidden")}
+                  className="bg-gray-900 text-white rounded-full py-2 font-semibold shadow"
+                >
+                  Deploy HIDDEN Layer
+                </motion.button>
+              )}
+
+              {/* enable output once ≥1 hidden exists and output not yet placed */}
+              {!outputLayer && hiddenLayers.length >= 1 && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => deployLayer("output")}
+                  className="bg-gray-900 text-white rounded-full py-2 font-semibold shadow"
+                >
+                  Deploy OUTPUT Layer
+                </motion.button>
+              )}
+            </div>
+
+            {/* ───── summary (moved from top-right) ───── */}
+            <div className="mt-6 bg-white rounded-xl shadow p-4 w-full text-sm">
+              <div className="flex items-center gap-1 font-semibold mb-2">
+                <Info size={14} />
+                Summary
+              </div>
+              <div className="flex justify-between">
+                <span>Input</span>
+                <span>{inputLayer ? inputLayer.neurons : "-"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Hidden size</span>
+                <span>{hiddenLayers[0] ? hiddenLayers[0].neurons : "-"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Hidden layers</span>
+                <span>{hiddenLayers.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Output</span>
+                <span>{outputLayer ? outputLayer.neurons : "-"}</span>
+              </div>
+            </div>
+
+            {/* spacer pushes undo / reset to bottom */}
+            <div className="flex-grow" />
+
+            {/* undo / reset keep same fixed-bottom styles or turn static here */}
+          </div>
+
+          {/* ───── visualizer ───── */}
+          <div className="relative flex-1 flex overflow-x-auto overflow-y-hidden bg-gradient-to-br from-gray-50 to-gray-100 pl-6 pr-20">
+            <div className="flex items-center gap-16">
+              {layers.map((layer, idx) => {
+                const circlesVisible = Math.min(
+                  layer.neurons,
+                  MAX_VISIBLE_CIRCLES
+                );
+                const dynamicHeight = Math.min(
+                  Math.max(
+                    MIN_BOX_HEIGHT,
+                    circlesVisible * (CIRCLE_SIZE + 4) + 32
+                  ),
+                  MAX_BOX_HEIGHT
+                );
+                return (
+                  <React.Fragment key={layer.id}>
+                    <motion.div
+                      whileHover={{
+                        scale: 1.06,
+                        boxShadow: "0 0 18px rgba(0,0,0,0.35)",
+                      }}
+                      className="group relative flex flex-col items-center gap-2 rounded-3xl overflow-hidden bg-white"
+                    >
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
+                        {layer.neurons} neurons
+                      </div>
+                      <div className="bg-white border border-gray-400 rounded-3xl p-2 flex flex-col items-center">
+                        <span className="capitalize text-[10px] font-semibold mb-1 pointer-events-none">
+                          {layer.type}
+                        </span>
+                        <div
+                          className="bg-gray-100 border border-gray-600 rounded-3xl flex flex-col items-center overflow-hidden px-3 py-2"
+                          style={{ width: 70, height: dynamicHeight }}
+                        >
+                          {Array.from({ length: circlesVisible }).map(
+                            (_, i) => (
+                              <div
+                                key={i}
+                                className="bg-white border border-gray-800 rounded-full mb-2 last:mb-0"
+                                style={{
+                                  width: CIRCLE_SIZE,
+                                  height: CIRCLE_SIZE,
+                                }}
+                              />
+                            )
+                          )}
+                          {layer.neurons > MAX_VISIBLE_CIRCLES && (
+                            <span className="text-xs font-bold">…</span>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                    {idx !== layers.length - 1 && (
+                      <ArrowRight
+                        size={34}
+                        strokeWidth={1.5}
+                        className="flex-shrink-0"
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ───── undo / reset ───── */}
+          <div className="fixed bottom-6 left-16 flex gap-4">
+            <motion.button
+              whileHover={{ scale: 1.12 }}
+              onClick={undo}
+              disabled={layers.length === 0}
+              className="w-12 h-12 rounded-full bg-gray-900 text-white flex items-center justify-center shadow disabled:opacity-40"
+            >
+              <RotateCcw size={20} />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.12 }}
+              onClick={reset}
+              disabled={layers.length === 0}
+              className="w-12 h-12 rounded-full bg-gray-900 text-white flex items-center justify-center shadow disabled:opacity-40"
+            >
+              <RefreshCcw size={20} />
+            </motion.button>
+          </div>
+
+          {/* ───── continue button ───── */}
+          <motion.button
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.93 }}
+            disabled={!outputLayer}
+            className="fixed bottom-6 right-6 flex items-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-full font-semibold shadow disabled:opacity-40"
+            onClick={() => setCurrentStep(2)}
+          >
+            Continue <ArrowRightCircle size={20} />
+          </motion.button>
+        </div>
+      )}
+    </>
+  );
+}
