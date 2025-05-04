@@ -5,8 +5,7 @@ import { Check } from "lucide-react";
 const steps = [
   { label: "Architecture" },
   { label: "Settings" },
-  { label: "Mode" },
-  { label: "Payload" },
+  { label: "Data" },
   { label: "Review" },
 ];
 
@@ -24,9 +23,9 @@ export default function ProgressBar({ currentStep }) {
                 <div
                   className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-full ${
                     isCompleted
-                      ? "bg-blue-600 text-white"
+                      ? "bg-black text-white"
                       : isActive
-                      ? "border-2 border-blue-600 text-blue-600"
+                      ? "border-2 border-black text-black"
                       : "border-2 border-gray-300 text-gray-300"
                   }`}
                 >
@@ -34,7 +33,7 @@ export default function ProgressBar({ currentStep }) {
                 </div>
                 <span
                   className={`mt-2 text-xs ${
-                    isCompleted || isActive ? "text-blue-600" : "text-gray-400"
+                    isCompleted || isActive ? "text-black" : "text-gray-400"
                   }`}
                 >
                   {step.label}
@@ -45,8 +44,8 @@ export default function ProgressBar({ currentStep }) {
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: isCompleted ? 1 : 0 }}
                   transition={{ duration: 0.4 }}
-                  className={`flex-1 h-1 ${
-                    isCompleted ? "bg-blue-600" : "bg-gray-300"
+                  className={`flex-1 h-1 mb-[18px] ${
+                    isCompleted ? "bg-black" : "bg-gray-300"
                   }`}
                   style={{ transformOrigin: "left" }}
                 />

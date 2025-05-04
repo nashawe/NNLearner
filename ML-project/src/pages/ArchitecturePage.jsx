@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 import ProgressBar from "../components/ProgressBar";
 import SettingsPage from "./SettingsPage";
+import PayloadPage from "./PayloadPage";
+import ReviewPage from "./ReviewPage";
 
 import {
   ArrowRight,
@@ -16,9 +18,9 @@ import {
 /* ───────── constants ───────── */
 const MAX_HIDDEN = 10;
 const MAX_VISIBLE_CIRCLES = 10;
-const MIN_BOX_HEIGHT = 80;
+const MIN_BOX_HEIGHT = 20;
 const MAX_BOX_HEIGHT = 360;
-const CIRCLE_SIZE = 26;
+const CIRCLE_SIZE = 20;
 
 /* ───────── helpers ───────── */
 const nextLayerType = (layers) => {
@@ -39,8 +41,10 @@ const canAdd = (layers) => {
 
 export default function ArchitecturePage() {
   const [layers, setLayers] = useState([]);
-  const [currentStep, setCurrentStep] = useState(1); // 1-Arch, 2-Settings
-  const [neuronCount, setNeuronCount] = useState(16);
+  const [currentStep, setCurrentStep] = useState(1); // 1-Arch, 2-Settings, 3 - Payload, 4 - Review
+  const [neuronCount, setNeuronCount] = useState(2);
+  const [trainSettings, setTrainSettings] = useState({});
+  const [payload, setPayload] = useState({});
 
   /* ───────── deployment ───────── */
   const deployLayer = (type) => {
@@ -80,10 +84,42 @@ export default function ArchitecturePage() {
         <SettingsPage
           onBack={() => setCurrentStep(1)}
           onContinue={() => setCurrentStep(3)} // placeholder for next page
+          onSave={setTrainSettings}
         />
       </>
     );
   }
+
+  if (currentStep === 3) {
+    return (
+      <>
+        <ProgressBar currentStep={3} />
+        <PayloadPage
+          onBack={() => setCurrentStep(2)}
+          onContinue={() => setCurrentStep(4)}
+          onSave={setPayload}
+        />
+      </>
+    );
+  }
+
+  if (currentStep === 4) {
+    return (
+      <>
+        <ProgressBar currentStep={4} />
+        <ReviewPage
+          layers={layers}
+          settings={trainSettings}
+          payload={payload}
+          onBack={() => setCurrentStep(3)}
+          onTrain={() => {
+            /* launch ya actual training routine here */
+          }}
+        />
+      </>
+    );
+  }
+
   /* ───────── UI ───────── */
   return (
     <>
@@ -93,6 +129,7 @@ export default function ArchitecturePage() {
         <SettingsPage
           onBack={() => setCurrentStep(1)}
           onContinue={() => setCurrentStep(3)} // next step placeholder
+          onSave={setTrainSettings}
         />
       ) : (
         <div className="w-full relative flex h-[calc(100vh-88px)]">
@@ -117,30 +154,28 @@ export default function ArchitecturePage() {
                       derivedStep === n ? "font-semibold" : "text-gray-500"
                     }`}
                   >
-                    {n === 1 && "Input"}
-                    {n === 2 && "Hidden"}
-                    {n === 3 && "Output"}
+                    {n === 1 && "Input Layer"}
+                    {n === 2 && "Hidden Layer"}
+                    {n === 3 && "Output Layer"}
                   </span>
                 </div>
               ))}
             </div>
 
-            {/* neuron slider */}
+            {/* neuron count */}
             <div className="flex flex-col gap-3">
               <label className="text-xs font-semibold uppercase tracking-wide">
                 Neuron Count
               </label>
               <input
-                type="range"
-                min={2}
+                type="number"
+                step={1}
+                min={1}
                 max={128}
                 value={neuronCount}
-                onChange={(e) => setNeuronCount(parseInt(e.target.value))}
-                className="w-full"
+                onChange={(e) => setNeuronCount(parseInt(e.target.value, 10))}
+                className="w-full px-2 py-1 border border-neutral-300 rounded focus:outline-none"
               />
-              <div className="text-center text-sm font-medium">
-                {neuronCount} neurons
-              </div>
             </div>
 
             {/* deploy buttons */}
@@ -213,7 +248,7 @@ export default function ArchitecturePage() {
 
           {/* ───── visualizer ───── */}
           <div className="relative flex-1 flex overflow-x-auto overflow-y-hidden bg-gradient-to-br from-gray-50 to-gray-100 pl-6 pr-20">
-            <div className="flex items-center gap-16">
+            <div className="flex items-center gap-10">
               {layers.map((layer, idx) => {
                 const circlesVisible = Math.min(
                   layer.neurons,
@@ -302,10 +337,10 @@ export default function ArchitecturePage() {
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.93 }}
             disabled={!outputLayer}
-            className="fixed bottom-6 right-6 flex items-center gap-2 bg-gray-900 text-white px-5 py-3 rounded-full font-semibold shadow disabled:opacity-40"
+            className="bottom-6 fixed right-6 overflow-hidden px-5 py-2 rounded-full text-sm font-semibold bg-gray-900 text-white"
             onClick={() => setCurrentStep(2)}
           >
-            Continue <ArrowRightCircle size={20} />
+            Continue <ArrowRightCircle size={20} className="inline ml-1" />
           </motion.button>
         </div>
       )}
