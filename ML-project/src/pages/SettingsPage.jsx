@@ -27,6 +27,41 @@ const rippleAnim = {
   },
 };
 
+const modeDescriptions = {
+  1: [
+    "Good for super simple stuff like predicting a number between 0 and 1.",
+    "Uses sigmoid to squish values into a 0–1 range.",
+    "Mean Squared Error (MSE) checks how far off the model's guesses are.",
+    "Not ideal for deep nets — can get slow or stuck learning.",
+    "Great when you just wanna toy around or do a basic rain prediction.",
+  ],
+  2: [
+    "Uses sigmoid + Binary Cross-Entropy for better yes/no probability learning.",
+    "Better at handling uncertainty than MSE.",
+    "Perfect for spam detection, cat/not-cat, or any binary question.",
+    "A bit more math, but way more stable for binary tasks.",
+  ],
+  3: [
+    "Switches to tanh, giving outputs from -1 to 1 instead of 0–1.",
+    "Still uses MSE to measure errors.",
+    "Good if your data has negative values or you want symmetric activation.",
+    "Works for stuff like direction or temperature shifts.",
+    "More balanced than sigmoid, but still slower in deep nets.",
+  ],
+  4: [
+    "ReLU in hidden layers speeds up learning and avoids small gradients.",
+    "Ends with sigmoid + BCE, so outputs are clear probabilities.",
+    "Watch out: ReLUs can die if the learning rate’s too high.",
+    "Great for deeper binary classifiers (e.g., dog vs. no dog).",
+  ],
+  5: [
+    "ReLU hidden layers + Softmax output for multi-class percentages.",
+    "Cross-Entropy loss pairs perfectly with softmax.",
+    "Use when you’ve got more than two choices (digits 0–9, categories, etc.).",
+    "Industry standard for most classification problems.",
+  ],
+};
+
 /* plain slider */
 const BasicSlider = ({ value, setValue, min, max, step }) => (
   <input
@@ -143,6 +178,7 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
   const [dropout, setDropout] = useState(0.2);
   const [weightInit, setWeightInit] = useState(1);
   const [optimizer, setOptimizer] = useState(1);
+  const [useLrScheduler, setUseLrScheduler] = useState(false);
 
   const [badge, setBadge] = useState(null);
   const showBadge = (txt) => {
@@ -150,6 +186,8 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
     clearTimeout(window.__badgeTimer);
     window.__badgeTimer = setTimeout(() => setBadge(null), 1200);
   };
+
+  const [infoId, setInfoId] = useState(null);
 
   const optimizerMap = {
     SGD: 1,
@@ -186,6 +224,7 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
       dropout,
       weightInit,
       optimizer,
+      useLrScheduler,
     });
   }, [
     mode_id,
@@ -220,47 +259,97 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
         animate="show"
       >
         {/* Mode (full first row) */}
+
         <motion.div
           custom={0}
           variants={staggerKids}
           className="lg:col-span-3 p-4 rounded-2xl bg-white shadow-md"
         >
-          <h2 className="text-lg font-semibold mb-3">
-            Mode (Activation + Loss)
-          </h2>
+          <h2 className="text-lg font-bold mb-3">Mode (Activation + Loss)</h2>
           <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {[
-              "1 - Sigmoid + Mean Squared Error (Regression / simple binary)",
-              "2 - Sigmoid + Binary Cross-Entropy (Probabilistic binary)",
-              "3 - Tanh + Mean Squared Error (Outputs -1 ↔ 1)",
-              "4 - ReLU (hidden) + Sigmoid (output) + Binary Cross-Entropy (Deep, fast)",
-              "5 - ReLU (hidden) + Softmax (output) + Cross-Entropy (Multiclass)",
-            ].map((opt) => (
-              <label
-                key={opt}
-                className={`p-3 border rounded-xl cursor-pointer transition text-sm ${
-                  mode_id === opt
-                    ? "bg-gray-900 text-white"
-                    : "hover:bg-gray-100"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="mode_id"
-                  className="sr-only"
-                  value={opt}
-                  checked={mode_id === parseInt(opt.split(" ")[0], 10)}
-                  onChange={() => {
-                    const id = parseInt(opt.split(" ")[0], 10);
-                    setMode_id(id);
-                    showBadge(id);
-                  }}
-                />
-                {opt}
-              </label>
-            ))}
+              "1 - Sigmoid + Mean Squared Error",
+              "2 - Sigmoid + Binary Cross-Entropy",
+              "3 - Tanh + Mean Squared Error",
+              "4 - ReLU (hidden) + Sigmoid (output) + Binary Cross-Entropy",
+              "5 - ReLU (hidden) + Softmax (output) + Cross-Entropy",
+            ].map((opt) => {
+              const id = parseInt(opt.split(" ")[0], 10);
+              const isSelected = mode_id === id;
+              return (
+                <div key={id} className="relative group">
+                  <label
+                    className={`
+                      flex items-center p-3 border rounded-xl cursor-pointer transition
+                      ${
+                        isSelected
+                          ? "bg-gray-800 text-white shadow-lg"
+                          : "bg-white text-black hover:bg-gray-100"
+                      }
+                    `}
+                  >
+                    <input
+                      type="radio"
+                      name="mode_id"
+                      className="sr-only"
+                      value={id}
+                      checked={isSelected}
+                      onChange={() => {
+                        setMode_id(id);
+                        showBadge(`Mode: ${id}`);
+                      }}
+                    />
+                    <span className="truncate whitespace-nowrap">{opt}</span>
+                  </label>
+                  <button
+                    onClick={() => setInfoId(id)}
+                    className="
+                      hidden group-hover:block absolute top-2 right-2
+                      bg-gray-200 text-gray-700 p-1 rounded-full
+                      hover:bg-gray-300
+                    "
+                  >
+                    i
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </motion.div>
+
+        <AnimatePresence>
+          {infoId !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                className="relative bg-white w-3/4 max-w-lg max-h-[80vh] overflow-y-auto p-6 rounded-lg shadow-2xl"
+              >
+                <button
+                  onClick={() => setInfoId(null)}
+                  className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 text-2xl"
+                >
+                  ×
+                </button>
+                <h3 className="text-xl font-bold mb-4">
+                  {[
+                    "1 - Sigmoid + Mean Squared Error",
+                    "2 - Sigmoid + Binary Cross-Entropy",
+                    "3 - Tanh + Mean Squared Error",
+                    "4 - ReLU (hidden) + Sigmoid (output) + Binary Cross-Entropy",
+                    "5 - ReLU (hidden) + Softmax (output) + Cross-Entropy",
+                  ].find((o) => parseInt(o.split(" ")[0], 10) === infoId)}
+                </h3>
+                <ul className="list-disc list-inside space-y-2 text-sm">
+                  {modeDescriptions[infoId].map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* General Trainin’ */}
         <motion.div
@@ -268,7 +357,7 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           variants={staggerKids}
           className="p-4 rounded-2xl bg-white shadow-md flex flex-col gap-4"
         >
-          <h2 className="text-base font-semibold">General Training</h2>
+          <h2 className="text-base font-bold">General Training</h2>
 
           {/* Batch first so dropdown visible */}
           <FloatInput label="Batch Size">
@@ -280,28 +369,11 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
                 showBadge(`Batch Size: ${v}`);
               }}
             />
-            <span className="text-[11px] opacity-60 mt-1">
+            <span className="text-[11px] opacity-60 py-4">
               1 → feed samples one-by-one
             </span>
           </FloatInput>
 
-          {/* learning rate */}
-          <label className="flex flex-col gap-2">
-            <span>Learning Rate</span>
-            <input
-              type="number"
-              step="0.001"
-              min={0.0001}
-              max={0.1}
-              value={learningRate}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                setLearningRate(v);
-                showBadge(`Learning Rate: ${v.toFixed(3)}`);
-              }}
-              className="border px-3 py-2 rounded w-full bg-white"
-            />
-          </label>
           {/* epochs */}
           <FloatInput label="Epochs">
             <input
@@ -323,8 +395,19 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           variants={staggerKids}
           className="p-4 rounded-2xl bg-white shadow-md flex flex-col gap-4"
         >
-          <h2 className="text-base font-semibold">Regularization & Init</h2>
-
+          <h2 className="text-base font-bold">Regularization & Init</h2>
+          {/* optimizer */}
+          <h2 className="text-base font-medium">Optimizer</h2>
+          <FlySelect
+            value={reverseMap[optimizer]}
+            options={["SGD", "RMSProp", "Adam"]}
+            onChange={(v) => {
+              const o_val = optimizerMap[v]; // convert to int
+              setOptimizer(o_val);
+              showBadge(v);
+            }}
+          />
+          {/* dropout */}
           <div className="flex items-center gap-4">
             <span className="font-medium">Dropout</span>
             <GlowToggle
@@ -335,7 +418,6 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
               }}
             />
           </div>
-
           <AnimatePresence>
             {useDropout && (
               <motion.div
@@ -359,9 +441,9 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
               </motion.div>
             )}
           </AnimatePresence>
-
+          {/* weight init */}
           <div>
-            <span className="block mb-1 font-medium">Weight Init</span>
+            <span className="block mb-3 font-medium">Weight Init</span>
             <div className="flex gap-3 flex-wrap">
               {["Random", "Xavier", "He"].map((opt) => (
                 <label key={opt} className="relative cursor-pointer text-sm">
@@ -392,25 +474,44 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           </div>
         </motion.div>
 
-        {/* Optimizer */}
+        {/* Learning Rate */}
         <motion.div
           custom={3}
           variants={staggerKids}
           className="p-4 rounded-2xl bg-white shadow-md flex flex-col gap-4"
         >
-          <h2 className="text-base font-semibold">Optimizer</h2>
-          <FlySelect
-            value={reverseMap[optimizer]}
-            options={["SGD", "RMSProp", "Adam"]}
-            onChange={(v) => {
-              const o_val = optimizerMap[v]; // convert to int
-              setOptimizer(o_val);
-              showBadge(v);
-            }}
-          />
+          <h2 className="text-base font-bold">Learning Rate Tuning</h2>
+          <label className="flex flex-col gap-2">
+            <span>Learning Rate</span>
+            <input
+              type="number"
+              step="0.001"
+              min={0.0001}
+              max={0.1}
+              value={learningRate}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setLearningRate(v);
+                showBadge(`Learning Rate: ${v.toFixed(3)}`);
+              }}
+              className="border px-3 py-2 rounded w-full bg-white"
+            />
+          </label>
+          <div className="flex items-center gap-4 mt-2">
+            <span className="font-medium">Learning Rate Scheduler</span>
+            <GlowToggle
+              enabled={useLrScheduler}
+              setEnabled={(v) => {
+                setUseLrScheduler(v);
+                showBadge(v ? "Scheduler ON" : "Scheduler OFF");
+              }}
+            />
+          </div>
+          <span className="text-[11px] opacity-60 mt-1">
+            Cosine decay from current LR → 0.0001
+          </span>
         </motion.div>
       </motion.div>
-
       {/* live badge */}
       <AnimatePresence>
         {badge && (
@@ -426,7 +527,6 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           </motion.span>
         )}
       </AnimatePresence>
-
       {/* nav buttons */}
       <div className="fixed bottom-6 right-6 flex gap-4">
         {["Back", "Continue"].map((btn) => (

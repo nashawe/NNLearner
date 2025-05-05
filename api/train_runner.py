@@ -16,23 +16,24 @@ def run_training_from_api(
     optimizer_choice,
     mode_id,
     batch_size,
-    learning_rate,
+    learn_rate,
     epochs,
-    init_fn,          # int 1-3 from the UI
+    init_id,          # int 1-3 from the UI
     data,
     labels,
     save_after_train=False,
     filename="latest_model.npz",
+    use_scheduler=False,
 ):
     # ------------------------------------------------- config + init
-    init_fn = WEIGHT_INITS.get(init_fn)
+    weight_init_fn = WEIGHT_INITS[init_id]     # weight init function
     config = MODES[mode_id]   
     
     # ------------------------------------------------- for debugging
     print ("config: "+ str(config))
-    print("init_fn: "+ str(init_fn))
+    
     print("batch size: " +  str(batch_size))
-    print("learning rate: " + str(learning_rate))
+    print("learning rate: " + str(learn_rate))
     print("epochs: " + str(epochs))
     print("data shape: " + str(np.array(data).shape))
     print("labels shape: " + str(np.array(labels).shape))
@@ -42,6 +43,8 @@ def run_training_from_api(
     print("num layers: " + str(num_layers))
     print("dropout: " + str(dropout))
     print("optimizer choice: " + str(optimizer_choice))
+    print("Learning rate scheduler: " + str(use_scheduler))
+    print("init fn: " + str(weight_init_fn))
     
     # ------------------------------------------------- labels ↔ output_size
     labels  = np.array(labels, dtype=np.float64)
@@ -68,13 +71,15 @@ def run_training_from_api(
     network = NeuralNetwork(
         input_size, hidden_size, num_layers, output_size,
         config, dropout_rate=dropout,
-        init_fn=init_fn, optimizer_choice=optimizer_choice,
+        init_fn=weight_init_fn, optimizer_choice=optimizer_choice,
     )
-    batch_size = batch_size or 1                       # default = SGD
+                    
     network.train(data, labels,
-                  learn_rate=learning_rate,
+                  learn_rate=learn_rate,
                   epochs=epochs,
-                  bsize=batch_size)
+                  bsize=batch_size, 
+                  use_scheduler=use_scheduler,
+    )
 
     # ------------------------------------------------- optional save
     if save_after_train:
@@ -83,7 +88,10 @@ def run_training_from_api(
             input_size, hidden_size, num_layers,
             dropout_rate=dropout,
             optimizer_choice=optimizer_choice,
-            mode_id=mode_id, bsize=batch_size,
+            mode_id=mode_id, bsize=batch_size, 
+            use_scheduler=use_scheduler,
+            init_fn=init_id,
+            learn_rate=learn_rate,
         )
 
     return {

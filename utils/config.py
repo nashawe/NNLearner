@@ -41,7 +41,7 @@ MODES = {
         "output_deriv": deriv_sig,
         "loss": bce_loss,
         "loss_grad": clipped_bce_grad,
-        "normalize": False,
+        "normalize": True,
     },
     5: {
     "hidden_activation": relu,  

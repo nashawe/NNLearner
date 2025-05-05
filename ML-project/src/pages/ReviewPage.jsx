@@ -1,18 +1,9 @@
 /* ───────── src/pages/ReviewPage.jsx ───────── */
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowLeftCircle, Rocket } from "lucide-react";
 import { trainModel, subTrainStatus } from "../services/api";
-
-/* same lil’ ripple vibe from SettingsPage */
-const rippleAnim = {
-  initial: { scale: 0, opacity: 0.35 },
-  animate: {
-    scale: 3,
-    opacity: 0,
-    transition: { duration: 0.6, ease: "easeOut" },
-  },
-};
+import { useNavigate } from "react-router-dom";
 
 export default function ReviewPage({
   layers,
@@ -25,10 +16,11 @@ export default function ReviewPage({
   const hiddenLayers = layers.filter((l) => l.type === "hidden");
   const outputLayer = layers.find((l) => l.type === "output");
 
-  const [blastOff, setBlastOff] = useState(false);
-  const [progress, setProgress] = useState(null);
+  const navigate = useNavigate();
 
   async function handleTrain() {
+    navigate("/train");
+    console.log("Training...");
     /* ─────────── 0. quick guards ─────────── */
     if (!payload?.data?.trim() || !payload?.labels?.trim()) {
       alert("Paste CSV data and labels first.");
@@ -97,6 +89,7 @@ export default function ReviewPage({
       });
       outputSize = nClasses;
     }
+    console.log("Data successfully prepped for classification.");
 
     /* ─────────── 4. build request body to send to API for training ─────────── */
     const body = {
@@ -111,9 +104,10 @@ export default function ReviewPage({
       optimizer_choice: settings.optimizer,
       mode_id: settings.mode_id,
       batch_size: settings.batchSize,
-      learning_rate: settings.learningRate,
+      learn_rate: settings.learningRate,
       epochs: settings.epochs,
-      init_fn: settings.weightInit,
+      init_id: settings.weightInit,
+      use_scheduler: settings.useLrScheduler,
 
       /* payload */
       data: rows,
@@ -137,8 +131,6 @@ export default function ReviewPage({
       console.error(err);
       alert(`Backend error: ${err.message}`);
     }
-    /* ─────────── 6. animate button ─────────── */
-    setBlastOff(true);
   }
 
   return (
@@ -224,20 +216,12 @@ export default function ReviewPage({
       <div className="w-full flex justify-center pb-16">
         <motion.button
           type="button"
-          className="relative flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-lg overflow-hidden"
+          className="relative flex items-center gap-8 bg-indigo-600 font-serif text-[100px] text-white px-20 py-10 rounded-full shadow-lg overflow-hidden"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleTrain}
         >
-          <AnimatePresence>
-            {blastOff && (
-              <motion.span
-                {...rippleAnim}
-                className="absolute left-1/2 top-1/2 w-1 h-1 bg-white rounded-full"
-              />
-            )}
-          </AnimatePresence>
-          <Rocket size={28} className="shrink-0" /> Train
+          <Rocket size={92} className="shrink-0" /> Train
         </motion.button>
       </div>
     </motion.div>

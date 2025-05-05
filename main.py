@@ -25,9 +25,16 @@ def load_full_model(filename):
     mode_id = int(data["mode_id"])
     bsize = int(data["batch_size"])
     output_size = int(data["output_size"])
+    learn_rate = float(data["learn_rate"])
+    use_scheduler = bool(data["use_scheduler"])
+    init_id = int(data["init_fn"])
+    epochs = int(data["epochs"])
+    init_fn = WEIGHT_INITS[init_id] 
 
     config = MODES[mode_id] 
 
+
+    init_fn = WEIGHT_INITS[init_id] #weight init function
     #create an instance of the NeuralNetwork class with the following attributes
     network = NeuralNetwork(
         input_size=input_size,
@@ -36,8 +43,11 @@ def load_full_model(filename):
         output_size=output_size,
         config=config,
         dropout_rate=dropout_rate,
-        init_fn=random_init,
-        optimizer_choice=optimizer_choice
+        init_fn=init_fn,
+        optimizer_choice=optimizer_choice,
+        use_scheduler=use_scheduler,
+        learn_rate=learn_rate,
+        epochs=epochs,
     )
 
     #basically build back up the network with for loops
@@ -54,7 +64,7 @@ def load_full_model(filename):
 
 
     print(f"\nModel loaded from {filename}")
-    print(f"Model Architecture:\n- Input size: {input_size}\n- Hidden layers: {num_layers}\n- Neurons per layer: {hidden_size}\n- Number of output neurons: {output_size}\n- Dropout rate: {dropout_rate}\n- Optimizer: {optimizer_choice}\n- Mode ID: {mode_id}\n- Batch size: {bsize}")
+    print(f"Model Architecture:\n- Input size: {input_size}\n- Hidden layers: {num_layers}\n- Neurons per layer: {hidden_size}\n- Number of output neurons: {output_size}\n- Dropout rate: {dropout_rate}\n- Optimizer: {optimizer_choice}\n- Mode ID: {mode_id}\n- Batch size: {bsize}\n- Learning rate: {learn_rate}\n- Learning rate scheduler: {use_scheduler}\n- Weight initialization method: {init_id}\n- Epochs: {epochs}\n")
     
     return network, config
 
@@ -132,7 +142,7 @@ if __name__ == '__main__':
     print("3 - He weight initialization")
         
     init_method = int(input("Enter the number of your chosen weight initialization method (1-3): "))
-    weight_init = WEIGHT_INITS[init_method] #relates the integer inputted by user to the actual optimization function that is coded
+    weight_init_fn = WEIGHT_INITS[init_method] #relates the integer inputted by user to the actual optimization function that is coded
     
     #this helps with printing out the summary of the model
     if init_method == 1:
@@ -161,6 +171,11 @@ if __name__ == '__main__':
         print_opt = "Adam"
     
     epochs = int(input("Enter the number of epochs for training: "))
+    use_scheduler = input("Would you like to use a learning rate scheduler? (y/n): ").strip().lower()
+    if use_scheduler == 'y':
+        use_scheduler = True
+    else:
+        use_scheduler = False
 
     #does user want to use default dataset to experiment?
     print("Do you want to use the default dataset? (y/n)")
@@ -241,7 +256,7 @@ if __name__ == '__main__':
         output_size,       
         config,
         dropout_rate=dropout_rate if do == "y" else 0,
-        init_fn=weight_init,
+        init_fn=weight_init_fn,
         optimizer_choice=optimizer_choice
     )
     
@@ -249,7 +264,7 @@ if __name__ == '__main__':
     network.train(data, labels, learn_rate=learn_rate, epochs=epochs, bsize=bsize)
     
     #print out the attributes of the model after training to "summarize" it
-    print(f"\nTraining complete. The model used:\nMode: {print_model}\nNumber of inputs: {input_size}\nMini-batch size: {bsize}\nDropout rate: {dropout_rate}\nWeight Initialization: {init_print}\nOptimizer function: {print_opt}\nNumber of hidden layers: {num_layers}\nNumber of neurons per layer: {hidden_size}\nLearning rate: {learn_rate}\nNumber of epochs: {epochs}")
+    print(f"\nTraining complete. The model used:\nMode: {print_model}\nNumber of inputs: {input_size}\nMini-batch size: {bsize}\nDropout rate: {dropout_rate}\nWeight Initialization: {init_print}\nOptimizer function: {print_opt}\nNumber of hidden layers: {num_layers}\nNumber of neurons per layer: {hidden_size}\nLearning rate: {learn_rate}\nLearning rate scheduling: {use_scheduler}\nNumber of epochs: {epochs}")
     
     # Ask the user if they'd like to test the model
     test_choice = input("Would you like to test the model with new data? (y/n): ").strip().lower()
@@ -272,7 +287,8 @@ if __name__ == '__main__':
             dropout_rate=dropout_rate if do == "y" else 0,
             optimizer_choice=optimizer_choice,
             mode_id=model_setup,
-            bsize=bsize
+            bsize=bsize,
+            init_id=init_id,
         )
     else:
         print("Model not saved.")

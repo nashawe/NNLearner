@@ -1,25 +1,32 @@
-import numpy as np
-import random
+import numpy as np 
 from models.neuron import Neuron
 from utils.activation import sigmoid, deriv_sig
 from utils.loss import mse_loss
 from utils.testing import test_model_loop
-import os
+from utils.lr_scheduler import cosine_decay
+import os, random
+from utils.winit import random_init, xavier_init, he_init
+
+WEIGHT_INITS = {1: random_init, 2: xavier_init, 3: he_init}
 
 class NeuralNetwork:
-    def __init__(self, input_size, hidden_size, num_layers, output_size, config, dropout_rate=0,init_fn=None, optimizer_choice=1):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, config, dropout_rate=0, init_fn=None, optimizer_choice=1, use_scheduler=False, learn_rate=0.01, epochs=1000):
         self.hidden_activation = config["hidden_activation"]
         self.hidden_deriv = config["hidden_deriv"]
         self.output_activation = config["output_activation"]
         self.output_deriv = config["output_deriv"]
         self.loss = config["loss"]
+        self.init_fn = init_fn
+        self.learn_rate = learn_rate
+        self.epochs = epochs
+        self.use_scheduler = use_scheduler
         self.loss_grad = config["loss_grad"]
         self.dropout_rate = dropout_rate
         self.optimizer_choice = optimizer_choice
         self.opt_states = {}  # stores momentums etc. for RMSprop/Adam
         self.timestep = 1     # for Adam bias correction
         self.output_size = output_size #output_size is the number of output neurons in the output layer
-        self.output_layer = [Neuron(hidden_size, init_fn) for _ in range(output_size)] #set up the output layer 
+        self.output_layer = [Neuron(hidden_size, self.init_fn) for _ in range(output_size)] #set up the output layer 
 
         # Build hidden layers
         self.hidden_layers = []
@@ -29,7 +36,7 @@ class NeuralNetwork:
         for _ in range(num_layers): #all code in this loop happens for each hidden layer.
             layer = [] #creates blank list that will contain neurons in the layer.
             for _ in range(hidden_size): #all code in this loop happens for each neuron in one layer.
-                layer.append(Neuron(prev_size, init_fn)) #add the neuron to the list of neurons for the layer.
+                layer.append(Neuron(prev_size, self.init_fn)) #add the neuron to the list of neurons for the layer.
             self.hidden_layers.append(layer) #adds the entire layer (list of neurons) to the list of layers.
             prev_size = hidden_size 
 
@@ -111,12 +118,16 @@ class NeuralNetwork:
             # e.g., for sigmoid or tanh, do them individually
             return np.array([self.output_activation(z) for z in z_vector])
 
-    def train(self, data, all_y_trues, learn_rate=0.05, epochs=1000, bsize=None):
+    def train(self, data, all_y_trues, learn_rate=0.05, epochs=1000, bsize=None, use_scheduler=False, lr_min=0.0001, lr_max=0.1):
         loss_history = []
         accuracy_history = []
         for epoch in range(epochs + 1):
             total_dropped = 0
             total_neurons = 0
+            #----------------------------------- learning rate scheduler
+            if use_scheduler:
+                learn_rate = cosine_decay(epoch, epochs, lr_max=learn_rate, lr_min=lr_min)
+            #----------------------------------- mini-batch training
             if bsize is not None and bsize != 1: #check if user wants mini-batch or not
                 #if they do shuffle the data:
                 indices = np.arange(len(data)) #create an array (1, 2, 3...) that has the amount of numbers as there are data points.
@@ -135,6 +146,7 @@ class NeuralNetwork:
                         dropped, total = self._train_sample(x, y_true, learn_rate) #call general backprop training function
                         total_dropped += dropped
                         total_neurons += total
+            #------------------------------------ non mini-batch training
             else:
                 for x, y_true in zip(data, all_y_trues): #iterates through both data (not in batches) and labels (not in batches)
                     self.timestep = 1
@@ -142,7 +154,7 @@ class NeuralNetwork:
                     total_dropped += dropped
                     total_neurons += total
                 
-            # Print loss every 100 epochs
+            #------------------------------------ print loss every 100 epochs
             if epoch % 100 == 0:
                 y_preds = np.array([self.feedforward(x)[0] for x in data]) if self.output_size == 1 else np.array([self.feedforward(x) for x in data])
 
@@ -168,6 +180,7 @@ class NeuralNetwork:
                     dropout_info = f" | Total dropout: {total_dropped}/{total_neurons} ({pct:.1f}%)"
                 print(f"Epoch {epoch} loss: {loss:.6f}{dropout_info}")
                 
+        #------------------------------------ final loss and accuracy
         if self.output_size == 1 and self.loss.__name__ == "bce_loss": #run metrics only if binary and bce loss
             from utils.metrics import accuracy, precision, recall, f1_score
             y_preds = np.array([self.feedforward(x)[0] for x in data]) #set y_preds
@@ -182,20 +195,13 @@ class NeuralNetwork:
             print(f"Recall:    {rec:.4f}")
             print(f"F1 Score:  {f1:.4f}")
         else:
-            from utils.metrics import multiclass_accuracy
-            y_preds = np.array([self.feedforward(x) for x in data])
-            acc = multiclass_accuracy(all_y_trues, y_preds)
-            print(f"\nFinal Training Metrics:")
-            self.final_metrics = {
-            "accuracy": acc,
-            "loss": loss_history[-1] if loss_history else None
-            }
+            print("No metrics available for this model.")
 
             
         self.loss_history = loss_history
         self.accuracy_history = accuracy_history
 
-
+#------------------------------------ test the model
     def _train_sample(self, x, y_true, learn_rate): #this is a helper function so I don't have to rewrite for batch-size vs non batch-size training      
         # Forward pass: store activations at each layer
         activations = [x]  # input is the first "activation"
@@ -301,7 +307,7 @@ class NeuralNetwork:
     
     
     def save_model(self, filename="my_model.npz", input_size=None, hidden_size=None, num_layers=None,
-               dropout_rate=None, optimizer_choice=None, mode_id=None, bsize=None):
+               dropout_rate=None, optimizer_choice=None, mode_id=None, bsize=None, use_scheduler=False, init_fn=None, weight_init_fn=None, learn_rate=None):
         model_data = {}
         
         #save architecture info
@@ -313,6 +319,10 @@ class NeuralNetwork:
         model_data["mode_id"] = mode_id
         model_data["batch_size"] = bsize
         model_data["output_size"] = self.output_size
+        model_data["use_scheduler"] = use_scheduler
+        model_data["init_fn"] = init_fn
+        model_data["learn_rate"] = learn_rate
+        model_data["epochs"] = self.epochs
         
         #go through each neuron and save its weights and bias
         for layer_index, layer in enumerate(self.hidden_layers):
