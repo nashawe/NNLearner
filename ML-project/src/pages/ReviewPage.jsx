@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeftCircle, Rocket } from "lucide-react";
+import { trainModel, subTrainStatus } from "../services/api";
 
 /* same lil’ ripple vibe from SettingsPage */
 const rippleAnim = {
@@ -13,12 +14,132 @@ const rippleAnim = {
   },
 };
 
-export default function ReviewPage({ layers, settings, onBack, onTrain }) {
+export default function ReviewPage({
+  layers,
+  settings,
+  payload,
+  onBack,
+  onTrain,
+}) {
   const inputLayer = layers.find((l) => l.type === "input");
   const hiddenLayers = layers.filter((l) => l.type === "hidden");
   const outputLayer = layers.find((l) => l.type === "output");
 
   const [blastOff, setBlastOff] = useState(false);
+  const [progress, setProgress] = useState(null);
+
+  async function handleTrain() {
+    /* ─────────── 0. quick guards ─────────── */
+    if (!payload?.data?.trim() || !payload?.labels?.trim()) {
+      alert("Paste CSV data and labels first.");
+      return;
+    }
+
+    /* ─────────── 1. parse CSV rows ─────────── */
+    const rows = payload.data
+      .trim()
+      .split(/\r?\n/)
+      .map((r) => r.trim())
+      .filter(Boolean)
+      .map((r) => r.split(",").map((v) => Number(v.trim())));
+
+    const rowLen = rows[0].length;
+    const badRow = rows.findIndex((r) => r.length !== rowLen);
+    if (badRow !== -1) {
+      alert(
+        `Row ${badRow + 1} has ${
+          rows[badRow].length
+        } columns; expected ${rowLen}.`
+      );
+      return;
+    }
+    if (rows.some((r) => r.some(Number.isNaN))) {
+      alert("Data contains non-numeric values.");
+      return;
+    }
+
+    /* ─────────── 2. parse labels ─────────── */
+    let rawLabels = payload.labels
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean)
+      .map(Number);
+
+    if (rawLabels.some(Number.isNaN)) {
+      alert("Labels contain non-numeric values.");
+      return;
+    }
+    if (rawLabels.length !== rows.length) {
+      alert(`You supplied ${rawLabels.length} labels for ${rows.length} rows.`);
+      return;
+    }
+
+    /* ─────────── 3. shape labels vs output_size ─────────── */
+    const uiOutSize = outputLayer?.neurons ?? 1; // chosen in architecture page
+    let labelsArr, outputSize;
+
+    if (uiOutSize === 1) {
+      // scalar output
+      labelsArr = rawLabels; // make column-vector
+      outputSize = 1;
+    } else {
+      const nClasses = Math.max(...rawLabels) + 1;
+      if (nClasses !== uiOutSize) {
+        alert(
+          `Output layer has ${uiOutSize} neurons but labels need ${nClasses}. Fix either one.`
+        );
+        return;
+      }
+      labelsArr = rawLabels.map((k) => {
+        const vec = Array(nClasses).fill(0);
+        vec[k] = 1;
+        return vec;
+      });
+      outputSize = nClasses;
+    }
+
+    /* ─────────── 4. build request body to send to API for training ─────────── */
+    const body = {
+      /* architecture */
+      input_size: rowLen,
+      hidden_size: hiddenLayers[0]?.neurons ?? 0,
+      output_size: outputSize,
+      num_layers: hiddenLayers.length,
+
+      /* training settings */
+      dropout: settings.useDropout ? settings.dropout : 0,
+      optimizer_choice: settings.optimizer,
+      mode_id: settings.mode_id,
+      batch_size: settings.batchSize,
+      learning_rate: settings.learningRate,
+      epochs: settings.epochs,
+      init_fn: settings.weightInit,
+
+      /* payload */
+      data: rows,
+      labels: labelsArr,
+      save_after_train: payload.saveAfter,
+      filename: payload.filename || "latest_model.npz",
+    };
+
+    /* ─────────── 5. fire request + websocket ─────────── */
+    try {
+      const res = await trainModel(body);
+      console.log("train OK →", res);
+
+      const unsub = subTrainStatus((msg) => {
+        setProgress?.(msg);
+        if (msg.status === "completed") unsub();
+      });
+
+      onTrain?.(res); // let parent know training done
+    } catch (err) {
+      console.error(err);
+      alert(`Backend error: ${err.message}`);
+    }
+    /* ─────────── 6. animate button ─────────── */
+    setBlastOff(true);
+  }
 
   return (
     <motion.div
@@ -69,7 +190,7 @@ export default function ReviewPage({ layers, settings, onBack, onTrain }) {
           <div className="flex flex-col gap-1 text-sm">
             <div className="flex justify-between">
               <span>Mode: </span>
-              <span>{settings.mode}</span>
+              <span>{settings.mode_id}</span>
             </div>
             <div className="flex justify-between">
               <span>Learning rate</span>
@@ -102,41 +223,18 @@ export default function ReviewPage({ layers, settings, onBack, onTrain }) {
       {/* chunky TRAIN button */}
       <div className="w-full flex justify-center pb-16">
         <motion.button
-          onClick={() => {
-            setBlastOff(true);
-            setTimeout(onTrain, 1200); // wire up ya actual train callback
-          }}
-          className="relative overflow-hidden flex items-center gap-3 px-16 py-8 rounded-full text-2xl font-black uppercase tracking-wider shadow-lg text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600"
+          type="button"
+          className="relative flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-full shadow-lg overflow-hidden"
           whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.94 }}
-          animate={
-            blastOff
-              ? {
-                  y: [0, -20, -100, -300, -800],
-                  x: [0, 10, -10, 5, 0],
-                  rotate: [0, 15, -15, 0],
-                  scale: [1, 1.1, 0.9, 1, 0.8],
-                  opacity: [1, 1, 1, 0.8, 0],
-                  transition: {
-                    duration: 1.2,
-                    ease: "easeIn",
-                    times: [0, 0.2, 0.5, 0.8, 1],
-                  },
-                }
-              : {}
-          }
+          whileTap={{ scale: 0.95 }}
+          onClick={handleTrain}
         >
           <AnimatePresence>
-            {!blastOff && (
+            {blastOff && (
               <motion.span
-                className="absolute inset-0 opacity-0"
-                variants={{ hover: rippleAnim }}
-              >
-                <motion.span
-                  variants={rippleAnim}
-                  className="absolute left-1/2 top-1/2 w-1 h-1 bg-white rounded-full"
-                />
-              </motion.span>
+                {...rippleAnim}
+                className="absolute left-1/2 top-1/2 w-1 h-1 bg-white rounded-full"
+              />
             )}
           </AnimatePresence>
           <Rocket size={28} className="shrink-0" /> Train

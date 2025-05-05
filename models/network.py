@@ -34,7 +34,6 @@ class NeuralNetwork:
             prev_size = hidden_size 
 
         # initializes the single output neuron
-        self.output_neuron = Neuron(hidden_size, init_fn)
         if self.optimizer_choice in [2, 3]:  # 2 = RMSprop, 3 = Adam
             self._init_optimizer_states()
 
@@ -118,7 +117,7 @@ class NeuralNetwork:
         for epoch in range(epochs + 1):
             total_dropped = 0
             total_neurons = 0
-            if bsize is not None: #check if user wants mini-batch or not
+            if bsize is not None and bsize != 1: #check if user wants mini-batch or not
                 #if they do shuffle the data:
                 indices = np.arange(len(data)) #create an array (1, 2, 3...) that has the amount of numbers as there are data points.
                 np.random.shuffle(indices) #shuffle up this array to get a random order.
@@ -246,25 +245,17 @@ class NeuralNetwork:
             dZ_outs.append(dZ)            
         
         for i, neuron in enumerate(self.output_layer):
-            z = np.dot(neuron.weights, activations[-1]) + neuron.bias
-            zs.append(z)
-
-            if self.output_size == 1:
-                if self.output_deriv is None:
-                    dZ = self.loss_grad(y_pred, y_true)
-                else:
-                    error = self.loss_grad(y_pred, y_true)
-                    dZ = error * self.output_deriv(z)
+            grads = dZ_outs[i] * np.array(activations[-1])
+            bias_grad = dZ_outs[i]
+            if self.optimizer_choice == 1:
+                neuron.weights -= learn_rate * grads
+                neuron.bias    -= learn_rate * bias_grad
             else:
-                if self.output_deriv is None:
-                    dZ = self.loss_grad(y_pred, y_true)[i]
-                else:
-                    error = self.loss_grad(y_pred[i], y_true[i])
-                    dZ = error * self.output_deriv(z)
-
-            dZ_outs.append(dZ)
-
-            
+                key = f"output_{i}"
+                w, b = self._update_weights(key, neuron.weights, grads, neuron.bias, bias_grad, learn_rate)
+                neuron.weights, neuron.bias = w, b
+                    
+        
         grad = np.zeros_like(activations[-1], dtype=np.float64)
         
 

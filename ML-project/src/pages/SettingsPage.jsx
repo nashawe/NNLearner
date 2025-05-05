@@ -135,14 +135,14 @@ function FloatInput({ label, children }) {
 }
 
 export default function SettingsPage({ onBack, onContinue, onSave }) {
-  const [mode, setMode] = useState("1 - Sigmoid + Mean Squared Error");
+  const [mode_id, setMode_id] = useState(1);
   const [learningRate, setLearningRate] = useState(0.01);
   const [epochs, setEpochs] = useState(1000);
   const [batchSize, setBatchSize] = useState(1);
   const [useDropout, setUseDropout] = useState(false);
   const [dropout, setDropout] = useState(0.2);
-  const [weightInit, setWeightInit] = useState("Random");
-  const [optimizer, setOptimizer] = useState("SGD");
+  const [weightInit, setWeightInit] = useState(1);
+  const [optimizer, setOptimizer] = useState(1);
 
   const [badge, setBadge] = useState(null);
   const showBadge = (txt) => {
@@ -151,10 +151,34 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
     window.__badgeTimer = setTimeout(() => setBadge(null), 1200);
   };
 
+  const optimizerMap = {
+    SGD: 1,
+    RMSProp: 2,
+    Adam: 3,
+  };
+
+  const reverseMap = {
+    1: "SGD",
+    2: "RMSProp",
+    3: "Adam",
+  };
+
+  const weightInitMap = {
+    Random: 1,
+    Xavier: 2,
+    He: 3,
+  };
+
+  const reverseWeightInitMap = {
+    1: "Random",
+    2: "Xavier",
+    3: "He",
+  };
+
   // onSave effect
   React.useEffect(() => {
     onSave?.({
-      mode,
+      mode_id,
       learningRate,
       epochs,
       batchSize,
@@ -164,7 +188,7 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
       optimizer,
     });
   }, [
-    mode,
+    mode_id,
     learningRate,
     epochs,
     batchSize,
@@ -215,18 +239,21 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
               <label
                 key={opt}
                 className={`p-3 border rounded-xl cursor-pointer transition text-sm ${
-                  mode === opt ? "bg-gray-900 text-white" : "hover:bg-gray-100"
+                  mode_id === opt
+                    ? "bg-gray-900 text-white"
+                    : "hover:bg-gray-100"
                 }`}
               >
                 <input
                   type="radio"
-                  name="mode"
+                  name="mode_id"
                   className="sr-only"
                   value={opt}
-                  checked={mode === opt}
+                  checked={mode_id === parseInt(opt.split(" ")[0], 10)}
                   onChange={() => {
-                    setMode(opt);
-                    showBadge(opt.split(" ")[0]);
+                    const id = parseInt(opt.split(" ")[0], 10);
+                    setMode_id(id);
+                    showBadge(id);
                   }}
                 />
                 {opt}
@@ -258,7 +285,6 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
             </span>
           </FloatInput>
 
-          {/* learning rate */}
           {/* learning rate */}
           <label className="flex flex-col gap-2">
             <span>Learning Rate</span>
@@ -337,22 +363,23 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           <div>
             <span className="block mb-1 font-medium">Weight Init</span>
             <div className="flex gap-3 flex-wrap">
-              {["He", "Random", "Xavier"].map((opt) => (
+              {["Random", "Xavier", "He"].map((opt) => (
                 <label key={opt} className="relative cursor-pointer text-sm">
                   <input
                     type="radio"
                     name="weightInit"
                     value={opt}
-                    checked={weightInit === opt}
+                    checked={reverseWeightInitMap[weightInit] === opt}
                     onChange={() => {
-                      setWeightInit(opt);
-                      showBadge(opt);
+                      const w_val = weightInitMap[opt]; // get int from string
+                      setWeightInit(w_val); // set weightInit to int
+                      showBadge(w_val);
                     }}
                     className="peer sr-only"
                   />
                   <span
                     className={`px-3 py-1 border rounded-full ${
-                      weightInit === opt
+                      reverseWeightInitMap[weightInit] === opt
                         ? "bg-gray-900 text-white"
                         : "hover:bg-gray-100"
                     }`}
@@ -373,10 +400,11 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
         >
           <h2 className="text-base font-semibold">Optimizer</h2>
           <FlySelect
-            value={optimizer}
-            options={["SGD", "Adam", "RMSProp"]}
+            value={reverseMap[optimizer]}
+            options={["SGD", "RMSProp", "Adam"]}
             onChange={(v) => {
-              setOptimizer(v);
+              const o_val = optimizerMap[v]; // convert to int
+              setOptimizer(o_val);
               showBadge(v);
             }}
           />

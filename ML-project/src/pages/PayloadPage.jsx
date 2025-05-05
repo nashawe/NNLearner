@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeftCircle, ArrowRightCircle } from "lucide-react";
 
@@ -63,16 +63,18 @@ const PillToggle = ({ enabled, setEnabled, id }) => (
     Save model
   </button>
 );
-React.useEffect(() => {
-  onSave?.({ data, labels, saveAfter, filename });
-}, [data, labels, saveAfter, filename]);
 
-export default function PayloadPage({ onBack, onContinue }) {
+export default function PayloadPage({ onBack, onContinue, onSave }) {
   const [data, setData] = useState("");
   const [labels, setLabels] = useState("");
   const [saveAfter, setSaveAfter] = useState(false);
   const [filename, setFilename] = useState("");
   const [exitCurtain, setExitCurtain] = useState(false);
+
+  /* 🔑 push the payload up to ArchitecturePage whenever it changes */
+  useEffect(() => {
+    onSave?.({ data, labels, saveAfter, filename });
+  }, [data, labels, saveAfter, filename, onSave]);
 
   return (
     <motion.div
@@ -92,6 +94,7 @@ export default function PayloadPage({ onBack, onContinue }) {
         <span className="opacity-50">→</span>
         <span className="font-bold">Data</span>
       </div>
+
       <motion.div className="grid gap-6 xl:grid-cols-3 md:grid-cols-2">
         {/* DATA CARD */}
         <motion.section
@@ -171,15 +174,10 @@ export default function PayloadPage({ onBack, onContinue }) {
 
       {/* nav buttons */}
       <div className="fixed bottom-6 right-6 flex gap-4">
-        {["Back", "Continue"].map((btn, idx) => (
+        {["Back", "Continue"].map((btn) => (
           <motion.button
             key={btn}
-            onClick={() => {
-              if (btn === "Back") onBack();
-              else {
-                onContinue();
-              }
-            }}
+            onClick={btn === "Back" ? onBack : onContinue}
             className={`relative overflow-hidden px-5 py-2 rounded-full text-sm font-semibold ${
               btn === "Back" ? "border bg-white" : "bg-gray-900 text-white"
             }`}
