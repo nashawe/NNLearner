@@ -1,344 +1,192 @@
-import numpy as np 
-from models.neuron import Neuron
-from utils.activation import sigmoid, deriv_sig
-from utils.loss import mse_loss
-from utils.testing import test_model_loop
-from utils.lr_scheduler import cosine_decay
-import os, random
-from utils.winit import random_init, xavier_init, he_init
+"""network.py – simple vectorized MLP (fixed gradients)
+========================================================
+This version restores stable training for binary (sigmoid + BCE)
+**and** multiclass (softmax + CE) while keeping full‑batch vectorization.
+All shapes are kept consistent so loss/accuracy metrics behave.
 
-WEIGHT_INITS = {1: random_init, 2: xavier_init, 3: he_init}
+Quick checklist
+---------------
+* Each layer ⇢ `(W, b)` NumPy arrays.
+* Forward pass returns `zs` (pre‑activations) & `acts` (post‑activations).
+* Back‑prop uses **delta** notation: `δ_L = ŷ − y` for sigmoid+BCE,
+  otherwise generic `loss_grad * d_act`.
+* Gradients are averaged over the mini‑batch.
+* Accuracy logging reshapes vectors so broadcasting can’t explode.
+"""
+from __future__ import annotations
+import numpy as np
+from utils.lr_scheduler import cosine_decay
+from utils.metrics import accuracy, multiclass_accuracy
+
+# --------------------------------------------------- helper --------------------------------------------------- #
+
+def _zeros(shape):
+    return np.zeros(shape, dtype=np.float64)
+
+# --------------------------------------------------- class ---------------------------------------------------- #
 
 class NeuralNetwork:
-    def __init__(self, input_size, hidden_size, num_layers, output_size, config, dropout_rate=0, init_fn=None, optimizer_choice=1, use_scheduler=False, learn_rate=0.01, epochs=1000):
-        self.hidden_activation = config["hidden_activation"]
-        self.hidden_deriv = config["hidden_deriv"]
-        self.output_activation = config["output_activation"]
-        self.output_deriv = config["output_deriv"]
-        self.loss = config["loss"]
-        self.init_fn = init_fn
-        self.learn_rate = learn_rate
-        self.epochs = epochs
-        self.use_scheduler = use_scheduler
-        self.loss_grad = config["loss_grad"]
-        self.dropout_rate = dropout_rate
-        self.optimizer_choice = optimizer_choice
-        self.opt_states = {}  # stores momentums etc. for RMSprop/Adam
-        self.timestep = 1     # for Adam bias correction
-        self.output_size = output_size #output_size is the number of output neurons in the output layer
-        self.output_layer = [Neuron(hidden_size, self.init_fn) for _ in range(output_size)] #set up the output layer 
+    """Fully‑vectorised feed‑forward network supporting SGD / RMSprop / Adam."""
 
-        # Build hidden layers
-        self.hidden_layers = []
-        prev_size = input_size
+    def __init__(
+        self,
+        input_dim: int,
+        hidden_units: int,
+        hidden_layers_count: int,
+        output_dim: int,
+        mode_cfg: dict,
+        dropout_rate: float = 0.0,
+        init_fn=None,
+        optimizer_choice: int = 1,   # 1=SGD  2=RMSprop  3=Adam
+        use_scheduler: bool = False,
+        learn_rate: float = 1e-3,
+    ) -> None:
+        # -------- hyper‑params
+        self.in_dim = input_dim
+        self.hid_units = hidden_units
+        self.n_hidden = hidden_layers_count
+        self.out_dim = output_dim
+        self.dropout = dropout_rate
+        self.init_fn = init_fn or (lambda fan_in, fan_out: np.random.randn(fan_in, fan_out) * 0.01)
+        self.opt = optimizer_choice
+        self.scheduler = use_scheduler
+        self.base_lr = learn_rate
 
-        # iterates through the amount of layers user gave and adds neurons to each layer and each layer to the collection of layers.
-        for _ in range(num_layers): #all code in this loop happens for each hidden layer.
-            layer = [] #creates blank list that will contain neurons in the layer.
-            for _ in range(hidden_size): #all code in this loop happens for each neuron in one layer.
-                layer.append(Neuron(prev_size, self.init_fn)) #add the neuron to the list of neurons for the layer.
-            self.hidden_layers.append(layer) #adds the entire layer (list of neurons) to the list of layers.
-            prev_size = hidden_size 
+        # -------- activations / loss from mode cfg
+        self.f_h = mode_cfg["hidden_activation"]
+        self.d_f_h = mode_cfg["hidden_deriv"]
+        self.f_o = mode_cfg["output_activation"]
+        self.d_f_o = mode_cfg["output_deriv"]
+        self.loss = mode_cfg["loss"]
+        self.loss_grad = mode_cfg["loss_grad"]
 
-        # initializes the single output neuron
-        if self.optimizer_choice in [2, 3]:  # 2 = RMSprop, 3 = Adam
-            self._init_optimizer_states()
+        # -------- weights & biases
+        self.weights, self.biases = [], []
+        prev = input_dim
+        for _ in range(self.n_hidden):
+            self.weights.append(self.init_fn(prev, hidden_units))
+            self.biases.append(_zeros(hidden_units))
+            prev = hidden_units
+        self.weights.append(self.init_fn(prev, output_dim))
+        self.biases.append(_zeros(output_dim))
 
-    def _init_optimizer_states(self):
-        def zero_like_shape(shape):
-            return np.zeros(shape, dtype=np.float64)
+        # -------- optimizer state (per‑layer)
+        self.state = [{"m": _zeros(W.shape), "v": _zeros(W.shape),
+                       "mb": _zeros(b.shape), "vb": _zeros(b.shape)}
+                      for W, b in zip(self.weights, self.biases)]
+        self.t = 1  # Adam timestep
 
-        # For each hidden neuron
-        for l_index, layer in enumerate(self.hidden_layers):
-            for n_index, neuron in enumerate(layer):
-                key = (l_index, n_index) #give each neuron a "name" of sorts where its like: (layer, neuron)
-                self.opt_states[key] = { #for each neuron, it stores the attributes of the neuron in 4 variables:
-                    'm': zero_like_shape(neuron.weights.shape),  # First moment (Adam)
-                    'v': zero_like_shape(neuron.weights.shape),  # Second moment (Adam/RMSprop)
-                    'mb': 0.0,  # Bias moment (Adam)
-                    'vb': 0.0,  # Bias variance (Adam/RMSprop)
-                }
+        # history
+        self.loss_history, self.acc_history = [], []
 
-        # For each output neuron
-        for i, neuron in enumerate(self.output_layer):
-            self.opt_states[f"output_{i}"] = {
-                'm': zero_like_shape(neuron.weights.shape),
-                'v': zero_like_shape(neuron.weights.shape),
-                'mb': 0.0,
-                'vb': 0.0,
-            }
-    def _update_weights(self, key, weights, grads, bias, dbias, learn_rate):
-        state = self.opt_states[key]
+    # ------------------------------------------------ forward -------------------------------------------------- #
+    def _forward(self, X: np.ndarray):
+        acts = [X]
+        zs = []
+        A = X
+        for i in range(self.n_hidden):
+            Z = A @ self.weights[i] + self.biases[i]
+            A = self.f_h(Z)
+            if self.dropout > 0:
+                mask = (np.random.rand(*A.shape) >= self.dropout).astype(np.float64)
+                A = A * mask / (1.0 - self.dropout)
+            zs.append(Z)
+            acts.append(A)
+        Z_out = A @ self.weights[-1] + self.biases[-1]
+        zs.append(Z_out)
+        acts.append(self.f_o(Z_out))
+        return zs, acts
+
+    # ------------------------------------------------ backward ------------------------------------------------- #
+    def _backward(self, zs, acts, y_true):
+        batch = y_true.shape[0]
+        dWs = [None] * len(self.weights)
+        dBs = [None] * len(self.biases)
+
+        y_pred = acts[-1]
+        # Ensure y_true has same 2‑D shape for binary case
+        if self.out_dim == 1 and y_true.ndim == 1:
+            y_true = y_true.reshape(-1, 1)
+
+        # ---- output delta
+        if self.out_dim == 1 and self.f_o.__name__ == "sigmoid" and self.loss.__name__ == "bce_loss":
+            delta = y_pred - y_true  # fast path
+        elif self.f_o.__name__ == "softmax" and self.loss.__name__ == "cross_entropy":
+            delta = y_pred - y_true  # softmax + CE shortcut
+        else:
+            delta = self.loss_grad(y_pred, y_true)
+            if self.d_f_o is not None:
+                delta *= self.d_f_o(zs[-1])
+
+        # gradients for output layer
+        dWs[-1] = acts[-2].T @ delta / batch
+        dBs[-1] = delta.mean(axis=0)
+
+        # ---- hidden layers
+        for i in reversed(range(self.n_hidden)):
+            delta = (delta @ self.weights[i + 1].T) * self.d_f_h(zs[i])
+            dWs[i] = acts[i].T @ delta / batch
+            dBs[i] = delta.mean(axis=0)
+        return dWs, dBs
+
+    # -------------------------------------------- optimizer step ---------------------------------------------- #
+    def _step(self, dWs, dBs, lr):
         eps = 1e-8
         beta1, beta2 = 0.9, 0.999
-        self.timestep += 1
+        self.t += 1
+        for i in range(len(self.weights)):
+            if self.opt == 1:  # SGD
+                self.weights[i] -= lr * dWs[i]
+                self.biases[i] -= lr * dBs[i]
+            elif self.opt == 2:  # RMSprop
+                s = self.state[i]
+                s["v"] = 0.9 * s["v"] + 0.1 * (dWs[i] ** 2)
+                s["vb"] = 0.9 * s["vb"] + 0.1 * (dBs[i] ** 2)
+                self.weights[i] -= lr * dWs[i] / (np.sqrt(s["v"]) + eps)
+                self.biases[i] -= lr * dBs[i] / (np.sqrt(s["vb"]) + eps)
+            else:  # Adam
+                s = self.state[i]
+                s["m"] = beta1 * s["m"] + (1 - beta1) * dWs[i]
+                s["v"] = beta2 * s["v"] + (1 - beta2) * (dWs[i] ** 2)
+                s["mb"] = beta1 * s["mb"] + (1 - beta1) * dBs[i]
+                s["vb"] = beta2 * s["vb"] + (1 - beta2) * (dBs[i] ** 2)
 
-        if self.optimizer_choice == 2:  # RMSprop
-            state['v'] = 0.9 * state['v'] + 0.1 * (grads ** 2)  # Update the second moment
-            state['vb'] = 0.9 * state['vb'] + 0.1 * (dbias ** 2)  # Update the bias variance
+                m_hat = s["m"] / (1 - beta1 ** self.t)
+                v_hat = s["v"] / (1 - beta2 ** self.t)
+                mb_hat = s["mb"] / (1 - beta1 ** self.t)
+                vb_hat = s["vb"] / (1 - beta2 ** self.t)
 
-            weights -= learn_rate * grads / (np.sqrt(state['v']) + eps)  # Update the weights using RMSprop
-            bias -= learn_rate * dbias / (np.sqrt(state['vb']) + eps)  # Update the bias using RMSprop
+                self.weights[i] -= lr * m_hat / (np.sqrt(v_hat) + eps)
+                self.biases[i] -= lr * mb_hat / (np.sqrt(vb_hat) + eps)
 
-        elif self.optimizer_choice == 3:  # Adam
-            state['m'] = beta1 * state['m'] + (1 - beta1) * grads  # Update the first moment
-            state['v'] = beta2 * state['v'] + (1 - beta2) * (grads ** 2)  # Update the second moment
-            m_hat = state['m'] / (1 - beta1 ** self.timestep)  # Bias-corrected first moment
-            v_hat = state['v'] / (1 - beta2 ** self.timestep)  # Bias-corrected second moment
-
-            state['mb'] = beta1 * state['mb'] + (1 - beta1) * dbias  # Update the bias moment
-            state['vb'] = beta2 * state['vb'] + (1 - beta2) * (dbias ** 2)  # Update the bias variance
-            mb_hat = state['mb'] / (1 - beta1 ** self.timestep)  # Bias-corrected bias moment
-            vb_hat = state['vb'] / (1 - beta2 ** self.timestep)  # Bias-corrected bias variance
-
-            weights -= learn_rate * m_hat / (np.sqrt(v_hat) + eps)  # Update the weights using Adam
-            bias -= learn_rate * mb_hat / (np.sqrt(vb_hat) + eps)  # Update the bias using Adam
-
-        return weights, bias
-
-    def feedforward(self, x):
-        for layer in self.hidden_layers: #this code happens for each layer in the list of hidden layers.
-            new_x = [] #creates a list of outputs from each neuron
-            for neuron in layer:
-                z = np.dot(neuron.weights, x) + neuron.bias
-                new_x.append(self.hidden_activation(z)) #adds each neurons output to list of outputs
-            x = new_x
-        #now collect all logits for the output layer
-        z_vector = []
-        for neuron in self.output_layer:
-            z = np.dot(neuron.weights, x) + neuron.bias
-            z_vector.append(z)
-
-        z_vector = np.array(z_vector)
-
-        # If using softmax, do it exactly once across the entire vector
-        if self.output_activation.__name__ == "softmax":  
-            return self.output_activation(z_vector)
-        else:
-            # e.g., for sigmoid or tanh, do them individually
-            return np.array([self.output_activation(z) for z in z_vector])
-
-    def train(self, data, all_y_trues, learn_rate=0.05, epochs=1000, bsize=None, use_scheduler=False, lr_min=0.0001, lr_max=0.1):
-        loss_history = []
-        accuracy_history = []
+    # ---------------------------------------------- training loop --------------------------------------------- #
+    def train(self, X, y, epochs=1000, batch_size=None, lr_min=1e-4):
+        if batch_size is None or batch_size < 1:
+            batch_size = len(X)
         for epoch in range(epochs + 1):
-            total_dropped = 0
-            total_neurons = 0
-            #----------------------------------- learning rate scheduler
-            if use_scheduler:
-                learn_rate = cosine_decay(epoch, epochs, lr_max=learn_rate, lr_min=lr_min)
-            #----------------------------------- mini-batch training
-            if bsize is not None and bsize != 1: #check if user wants mini-batch or not
-                #if they do shuffle the data:
-                indices = np.arange(len(data)) #create an array (1, 2, 3...) that has the amount of numbers as there are data points.
-                np.random.shuffle(indices) #shuffle up this array to get a random order.
-                data = data[indices] #then redefine the dataset in that new order
-                all_y_trues = np.array(all_y_trues)[indices] #then redefine the labels of that dataset to the same new order.
-                
-                for start in range(0, len(data), bsize): #iterate through all the data but this time in increments of batch size
-                   
-                    end = start + bsize #this tells us the end of the batch its on
-                    batch_data = data[start:end] #sets the batch_data to the section of data from start to end
-                    batch_labels = all_y_trues[start:end] #does the same thing with the batch_labels
-                    self.timestep = 1
-                    for x, y_true in zip(batch_data, batch_labels): #iterates through both data (in batches) and the corresponding labels (in batches)
-                        
-                        dropped, total = self._train_sample(x, y_true, learn_rate) #call general backprop training function
-                        total_dropped += dropped
-                        total_neurons += total
-            #------------------------------------ non mini-batch training
-            else:
-                for x, y_true in zip(data, all_y_trues): #iterates through both data (not in batches) and labels (not in batches)
-                    self.timestep = 1
-                    dropped, total = self._train_sample(x, y_true, learn_rate) #call general backprop training function
-                    total_dropped += dropped
-                    total_neurons += total
-                
-            #------------------------------------ print loss every 100 epochs
+            lr = cosine_decay(epoch, epochs, self.base_lr, lr_min) if self.scheduler else self.base_lr
+            perm = np.random.permutation(len(X))
+            X, y = X[perm], y[perm]
+            for start in range(0, len(X), batch_size):
+                end = start + batch_size
+                zs, acts = self._forward(X[start:end])
+                dWs, dBs = self._backward(zs, acts, y[start:end])
+                self._step(dWs, dBs, lr)
             if epoch % 100 == 0:
-                y_preds = np.array([self.feedforward(x)[0] for x in data]) if self.output_size == 1 else np.array([self.feedforward(x) for x in data])
-
-                loss = self.loss(all_y_trues, y_preds)
-                loss_history.append(loss) #add the loss to the loss history
-                
-                # Compute predictions and loss
-                if self.output_size == 1 and self.loss.__name__ == "bce_loss":
-                    from utils.metrics import accuracy
-                    acc = accuracy(all_y_trues, y_preds)
-                elif self.output_size > 1:
-                    from utils.metrics import multiclass_accuracy
-                    acc = multiclass_accuracy(all_y_trues, y_preds)
+                _, acts_full = self._forward(X)
+                y_pred_full = acts_full[-1]
+                # reshape for metrics
+                if self.out_dim == 1:
+                    y_pred_vec = y_pred_full.flatten()
+                    loss_val = self.loss(y.reshape(-1, 1), y_pred_full)
+                    acc_val = accuracy(y, y_pred_vec)
                 else:
-                    acc = None
+                    loss_val = self.loss(y, y_pred_full)
+                    acc_val = multiclass_accuracy(y, y_pred_full)
+                self.loss_history.append(loss_val)
+                self.acc_history.append(acc_val)
+                print(f"Epoch {epoch} | loss {loss_val:.6f} | acc {acc_val:.4f} | lr {lr:.6f}")
 
-                if acc is not None:
-                    accuracy_history.append(acc)
-
-                dropout_info = ""
-                if self.dropout_rate > 0 and total_neurons > 0:
-                    pct = 100 * total_dropped / total_neurons
-                    dropout_info = f" | Total dropout: {total_dropped}/{total_neurons} ({pct:.1f}%)"
-                print(f"Epoch {epoch} loss: {loss:.6f}{dropout_info}")
-                
-        #------------------------------------ final loss and accuracy
-        if self.output_size == 1 and self.loss.__name__ == "bce_loss": #run metrics only if binary and bce loss
-            from utils.metrics import accuracy, precision, recall, f1_score
-            y_preds = np.array([self.feedforward(x)[0] for x in data]) #set y_preds
-            acc = accuracy(all_y_trues, y_preds) #call the accuracy function
-            prec = precision(all_y_trues, y_preds) #call the precision function 
-            rec = recall(all_y_trues, y_preds) #call the recall function    
-            f1 = f1_score(all_y_trues, y_preds) #call the f1 function
-            
-            print("\nFinal Training Metrics:") #print the metrics at the end
-            print(f"Accuracy:  {acc:.4f}")
-            print(f"Precision: {prec:.4f}")
-            print(f"Recall:    {rec:.4f}")
-            print(f"F1 Score:  {f1:.4f}")
-        else:
-            print("No metrics available for this model.")
-
-            
-        self.loss_history = loss_history
-        self.accuracy_history = accuracy_history
-
-#------------------------------------ test the model
-    def _train_sample(self, x, y_true, learn_rate): #this is a helper function so I don't have to rewrite for batch-size vs non batch-size training      
-        # Forward pass: store activations at each layer
-        activations = [x]  # input is the first "activation"
-        sample_dropped = 0
-        sample_total = 0
-        for layer in self.hidden_layers: #for each layer in the list of hidden layers:
-            layer_output = [] # creates blank list of neuron outputs for each layer.
-            dropped_count = 0
-            for neuron in layer: #for each neuron in the individual layer.
-                neuron.dropped = np.random.rand() < self.dropout_rate
-                if neuron.dropped:
-                    dropped_count += 1
-                    a = 0
-                else:
-                    z = np.dot(neuron.weights, activations[-1]) + neuron.bias #gets raw output of neuron
-                    a = (self.hidden_activation(z)) / (1 - self.dropout_rate) #apply activation function divided by dropout_rate
-                layer_output.append(a)
-            activations.append(layer_output)
-            sample_dropped += dropped_count
-            sample_total += len(layer)
-
-        y_pred = self.feedforward(x)
-        if self.output_size == 1:
-            y_pred = y_pred[0]  # flatten from [0.9] to 0.9
-
-        dZ_outs = []
-        zs = []
-        #iterate through each output neuron (like its a layer)
-        y_true = np.array(y_true, dtype=np.float64)
-
-        #Unwrap for binary classification (output_size = 1)
-        if self.output_size == 1 and y_true.shape == (1,):
-            y_true = y_true[0]
-
-
-        for i, neuron in enumerate(self.output_layer):
-            z = np.dot(neuron.weights, activations[-1]) + neuron.bias
-            zs.append(z)
-            if self.output_deriv is None:
-                dZ = self.loss_grad(y_pred, y_true)[i]
-            else:
-                if self.output_size == 1:
-                    error = self.loss_grad(y_pred, y_true)
-                else:
-                    error = self.loss_grad(y_pred[i], y_true[i])
-                dZ = error * self.output_deriv(z)
-            dZ_outs.append(dZ)            
-        
-        for i, neuron in enumerate(self.output_layer):
-            grads = dZ_outs[i] * np.array(activations[-1])
-            bias_grad = dZ_outs[i]
-            if self.optimizer_choice == 1:
-                neuron.weights -= learn_rate * grads
-                neuron.bias    -= learn_rate * bias_grad
-            else:
-                key = f"output_{i}"
-                w, b = self._update_weights(key, neuron.weights, grads, neuron.bias, bias_grad, learn_rate)
-                neuron.weights, neuron.bias = w, b
-                    
-        
-        grad = np.zeros_like(activations[-1], dtype=np.float64)
-        
-
-        for i, neuron in enumerate(self.output_layer):
-            for j in range(len(neuron.weights)):
-                grad[j] += dZ_outs[i] * neuron.weights[j]
-
-        for i in reversed(range(len(self.hidden_layers))): #for each layer (from last to first).
-            layer = self.hidden_layers[i]
-            layer_input = activations[i]     # input to this layer
-            layer_output = activations[i+1]  # output from this layer
-
-            # Create a new gradient array for the layer below
-            new_grad = np.zeros_like(layer_input, dtype=np.float64) #ensures that new grad is the same size as layer_input so we can do element wise operations.
-
-            for j, neuron in enumerate(layer): #for each neuron in the current layer
-                if neuron.dropped:
-                    continue
-                dZ_hidden = grad[j] * self.hidden_deriv(layer_output[j]) 
-
-                # Update weights and bias for this neuron
-                grads = dZ_hidden * np.array(layer_input)
-                bias_grad = dZ_hidden
-
-                if self.optimizer_choice == 1:
-                    neuron.weights -= learn_rate * grads
-                    neuron.bias -= learn_rate * bias_grad
-                else:
-                    key = (i, j)  # i = layer index, j = neuron index
-                    w, b = self._update_weights(key, neuron.weights, grads, neuron.bias, bias_grad, learn_rate)
-                    neuron.weights = w
-                    neuron.bias = b
-                # Accumulate gradient for the next backprop step
-                for weight_i in range(len(neuron.weights)):
-                    new_grad[weight_i] += neuron.weights[weight_i] * dZ_hidden
-
-            grad = new_grad #pass new_grad on to the next (lower) layer
-        for dz in dZ_outs:
-            if np.isnan(dz) or np.isinf(dz):
-                print("Gradient explosion!", dz)
-
-        return sample_dropped, sample_total
-    
-    
-    def save_model(self, filename="my_model.npz", input_size=None, hidden_size=None, num_layers=None,
-               dropout_rate=None, optimizer_choice=None, mode_id=None, bsize=None, use_scheduler=False, init_fn=None, weight_init_fn=None, learn_rate=None):
-        model_data = {}
-        
-        #save architecture info
-        model_data["input_size"] = input_size
-        model_data["hidden_size"] = hidden_size
-        model_data["num_layers"] = num_layers
-        model_data["dropout_rate"] = dropout_rate
-        model_data["optimizer_choice"] = optimizer_choice
-        model_data["mode_id"] = mode_id
-        model_data["batch_size"] = bsize
-        model_data["output_size"] = self.output_size
-        model_data["use_scheduler"] = use_scheduler
-        model_data["init_fn"] = init_fn
-        model_data["learn_rate"] = learn_rate
-        model_data["epochs"] = self.epochs
-        
-        #go through each neuron and save its weights and bias
-        for layer_index, layer in enumerate(self.hidden_layers):
-            for neuron_index, neuron in enumerate(layer):
-                key_w = f"hidden_{layer_index}_{neuron_index}_weights"
-                key_b = f"hidden_{layer_index}_{neuron_index}_bias"
-                model_data[key_w] = neuron.weights
-                model_data[key_b] = neuron.bias 
-        
-        # Save all output neurons
-        for i, neuron in enumerate(self.output_layer):
-            model_data[f"output_{i}_weights"] = neuron.weights
-            model_data[f"output_{i}_bias"] = neuron.bias
-        
-        #save to .npz file
-        save_path = os.path.join("saved_models", filename)
-        np.savez(save_path, **model_data)
-        print(f"Model saved to {save_path}")
-        
+    # ---------------------------------------------- inference -------------------------------------------------- #
+    def predict(self, X):
+        return self._forward(X)[1][-1]

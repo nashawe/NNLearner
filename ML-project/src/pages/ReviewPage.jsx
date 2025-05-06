@@ -19,6 +19,21 @@ export default function ReviewPage({
   const navigate = useNavigate();
 
   async function handleTrain() {
+    const mode_id = settings.mode_id;
+    const output_size = outputLayer?.neurons ?? 1;
+
+    if (mode_id === 5 && output_size === 1) {
+      alert("Softmax + cross-entropy mode requires output size > 1.");
+      return;
+    }
+
+    if ([1, 2, 3, 4].includes(mode_id) && output_size !== 1) {
+      alert(
+        `Mode ${mode_id} is for binary classification and requires exactly 1 output neuron. You selected ${output_size}.`
+      );
+      return;
+    }
+
     navigate("/train");
     console.log("Training...");
     /* ─────────── 0. quick guards ─────────── */

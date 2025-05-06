@@ -14,6 +14,29 @@ import {
   ArrowRightCircle,
 } from "lucide-react";
 
+/* floating label */
+function FloatInput({ label, children }) {
+  const [focus, setFocus] = useState(false);
+  return (
+    <div
+      onFocus={() => setFocus(true)}
+      onBlur={() => setFocus(false)}
+      className="relative flex flex-col pt-6"
+    >
+      <motion.label
+        animate={
+          focus ? { y: -10, scale: 1, color: "#000" } : { y: -5, scale: 0.85 }
+        }
+        transition={{ type: "spring", stiffness: 260, damping: 22 }}
+        className="absolute left-0 top-2 text-gray-500 pointer-events-none origin-left"
+      >
+        {label}
+      </motion.label>
+      {children}
+    </div>
+  );
+}
+
 /* constants */
 const MAX_HIDDEN = 10;
 const MAX_VISIBLE_CIRCLES = 10;
@@ -36,17 +59,52 @@ const nextLayerType = (layers) => {
 export default function ArchitecturePage() {
   const [layers, setLayers] = useState([]);
   const [currentStep, setCurrentStep] = useState(1); // 1-Arch, 2-Settings, 3-Payload, 4-Review
-  const [neuronCount, setNeuronCount] = useState(2);
+  const [neuronCount, setNeuronCount] = useState("");
   const [trainSettings, setTrainSettings] = useState({});
   const [payload, setPayload] = useState({});
 
   /* deploy layers */
   const deployLayer = (type) => {
-    setLayers((prev) => [
-      ...prev,
-      { id: uuidv4(), type, neurons: neuronCount },
-    ]);
+    if (type === "hidden") {
+      const firstHidden = layers.find((l) => l.type === "hidden");
+
+      if (!firstHidden) {
+        if (neuronCount === "" || isNaN(neuronCount)) {
+          alert("Please enter a valid neuron count before deploying a layer.");
+          return;
+        }
+
+        setLayers((prev) => [
+          ...prev,
+          { id: uuidv4(), type: "hidden", neurons: neuronCount },
+        ]);
+      } else {
+        setLayers((prev) => [
+          ...prev,
+          { id: uuidv4(), type: "hidden", neurons: firstHidden.neurons },
+        ]);
+      }
+    } else {
+      if (neuronCount === "" || isNaN(neuronCount)) {
+        alert("Please enter a valid neuron count before deploying a layer.");
+        return;
+      }
+
+      setLayers((prev) => [
+        ...prev,
+        { id: uuidv4(), type, neurons: neuronCount },
+      ]);
+    }
   };
+
+  const currentLayerStep = (() => {
+    const nt = nextLayerType(layers);
+    if (nt === "input") return 1;
+    if (nt === "hidden") return 2;
+    if (nt === "output") return 3;
+    return 3; // already complete
+  })();
+
   const handleDeploy = () => {
     const nt = nextLayerType(layers);
     if (nt) deployLayer(nt);
@@ -71,35 +129,52 @@ export default function ArchitecturePage() {
           <div className="w-64 p-6 border-r border-gray-300 flex flex-col gap-6 shrink-0">
             {/* progress dots */}
             <div className="flex flex-col gap-4">
-              {[1, 2, 3].map((n) => (
-                <div key={n} className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold bg-gray-200 text-gray-500">
-                    {n}
+              {[1, 2, 3].map((n) => {
+                const isCurrent = n === currentLayerStep;
+
+                return (
+                  <div key={n} className="flex items-center gap-2">
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
+                        isCurrent
+                          ? "bg-gray-900 text-white"
+                          : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
+                      {n}
+                    </div>
+                    <span
+                      className={`text-sm ${
+                        isCurrent
+                          ? "text-gray-900 font-semibold"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {n === 1 && "Input Layer"}
+                      {n === 2 && "Hidden Layer(s)"}
+                      {n === 3 && "Output Layer"}
+                    </span>
                   </div>
-                  <span className="text-sm text-gray-500">
-                    {n === 1 && "Input Layer"}
-                    {n === 2 && "Hidden Layer"}
-                    {n === 3 && "Output Layer"}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* neuron count */}
-            <div className="flex flex-col gap-3">
-              <label className="text-xs font-semibold uppercase tracking-wide">
-                Neuron Count
-              </label>
+            <FloatInput label="Neuron Count">
               <input
                 type="number"
                 step={1}
                 min={1}
                 max={128}
                 value={neuronCount}
-                onChange={(e) => setNeuronCount(+e.target.value || 1)}
-                className="w-full px-2 py-1 border border-neutral-300 rounded focus:outline-none"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNeuronCount(val === "" ? "" : parseInt(val));
+                  showBadge(`Neuron Count: ${val}`);
+                }}
+                className="border px-3 py-2 rounded w-full bg-white"
               />
-            </div>
+            </FloatInput>
 
             {/* deploy buttons */}
             <div className="flex flex-col gap-2">
@@ -181,7 +256,7 @@ export default function ArchitecturePage() {
           </div>
 
           {/* ---------- visualiser ---------- */}
-          <div className="relative flex-1 flex overflow-x-auto overflow-y-hidden bg-gradient-to-br from-gray-50 to-gray-100 pl-6 pr-20">
+          <div className="relative flex-1 flex overflow-x-auto bg-gradient-to-br from-gray-50 to-gray-100 pl-6 pr-20">
             <div className="flex items-center gap-10">
               {layers.map((layer, idx) => {
                 const circlesVisible = Math.min(
@@ -202,11 +277,12 @@ export default function ArchitecturePage() {
                         scale: 1.06,
                         boxShadow: "0 0 18px rgba(0,0,0,0.35)",
                       }}
-                      className="group relative flex flex-col items-center gap-2 rounded-3xl overflow-hidden bg-white"
+                      className="group relative flex flex-col items-center gap-2 rounded-3xl bg-white"
                     >
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
+                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black text-white text-xs font-medium px-2 py-1 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 z-10">
                         {layer.neurons} neurons
                       </div>
+
                       <div className="bg-white border border-gray-400 rounded-3xl p-2 flex flex-col items-center">
                         <span className="capitalize text-[10px] font-semibold mb-1 pointer-events-none">
                           {layer.type}

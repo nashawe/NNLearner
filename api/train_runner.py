@@ -69,16 +69,24 @@ def run_training_from_api(
 
     # ------------------------------------------------- create + train
     network = NeuralNetwork(
-        input_size, hidden_size, num_layers, output_size,
-        config, dropout_rate=dropout,
-        init_fn=weight_init_fn, optimizer_choice=optimizer_choice,
+        input_dim=input_size,
+        hidden_units=hidden_size,
+        hidden_layers_count=num_layers,
+        output_dim=output_size,
+        mode_cfg=config,
+        dropout_rate=dropout,
+        init_fn=weight_init_fn,
+        optimizer_choice=optimizer_choice,
+        use_scheduler=use_scheduler,   # pass the scheduler flag
+        learn_rate=learn_rate,         # pass your 0.001 base LR
     )
                     
-    network.train(data, labels,
-                  learn_rate=learn_rate,
-                  epochs=epochs,
-                  bsize=batch_size, 
-                  use_scheduler=use_scheduler,
+    network.train(
+        X=data,
+        y=labels,
+        epochs=epochs,
+        batch_size=batch_size,
+        lr_min=1e-4,   # floor for cosine decay
     )
 
     # ------------------------------------------------- optional save
@@ -100,7 +108,8 @@ def run_training_from_api(
         "epochs":         epochs,
         "mode":           mode_id,
         "output_size":    output_size,
-        "loss_history":   network.loss_history,
-        "accuracy_history": network.accuracy_history,
+        "loss_history":   getattr(network, "loss_history", []),
+        "accuracy_history": getattr(network, "accuracy_history", []),
         **getattr(network, "final_metrics", {}),
     }
+

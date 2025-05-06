@@ -1,12 +1,10 @@
 import numpy as np
 
-def random_init(n_in):
-    return np.random.randn(n_in)
+def he_init(fan_in, fan_out):
+    return np.random.randn(fan_in, fan_out) * np.sqrt(2. / fan_in)
 
-def xavier_init(n_in):
-    limit = np.sqrt(1 / n_in)
-    return np.random.uniform(-limit, limit, n_in)
+def xavier_init(fan_in, fan_out):
+    return np.random.randn(fan_in, fan_out) * np.sqrt(1. / fan_in)
 
-def he_init(n_in):
-    std = np.sqrt(2 / n_in)
-    return np.random.randn(n_in) * std
+def random_init(fan_in, fan_out):
+    return np.random.randn(fan_in, fan_out) * 0.01
