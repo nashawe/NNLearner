@@ -1,17 +1,17 @@
-"""network.py – simple vectorized MLP (fixed gradients)
+"""network.py - simple vectorized MLP (fixed gradients)
 ========================================================
-This version restores stable training for binary (sigmoid + BCE)
-**and** multiclass (softmax + CE) while keeping full‑batch vectorization.
+This version restores stable training for binary (sigmoid + BCE)
+**and** multiclass (softmax + CE) while keeping full-batch vectorization.
 All shapes are kept consistent so loss/accuracy metrics behave.
 
 Quick checklist
 ---------------
 * Each layer ⇢ `(W, b)` NumPy arrays.
-* Forward pass returns `zs` (pre‑activations) & `acts` (post‑activations).
-* Back‑prop uses **delta** notation: `δ_L = ŷ − y` for sigmoid+BCE,
+* Forward pass returns `zs` (pre-activations) & `acts` (post-activations).
+* Back-prop uses delta notation
   otherwise generic `loss_grad * d_act`.
-* Gradients are averaged over the mini‑batch.
-* Accuracy logging reshapes vectors so broadcasting can’t explode.
+* Gradients are averaged over the mini-batch.
+* Accuracy logging reshapes vectors so broadcasting can't explode.
 """
 from __future__ import annotations
 import numpy as np
@@ -26,7 +26,7 @@ def _zeros(shape):
 # --------------------------------------------------- class ---------------------------------------------------- #
 
 class NeuralNetwork:
-    """Fully‑vectorised feed‑forward network supporting SGD / RMSprop / Adam."""
+    """Fully-vectorised feed-forward network supporting SGD / RMSprop / Adam."""
 
     def __init__(
         self,
@@ -160,32 +160,76 @@ class NeuralNetwork:
                 self.biases[i] -= lr * mb_hat / (np.sqrt(vb_hat) + eps)
 
     # ---------------------------------------------- training loop --------------------------------------------- #
-    def train(self, X, y, epochs=1000, batch_size=None, lr_min=1e-4):
+    def train(
+        self,
+        X,
+        y,
+        epochs: int = 1000,
+        batch_size: int | None = None,
+        lr_min: float = 1e-4,
+        on_epoch_end: Callable[[int, float], None] | None = None,
+        end_on_epoch: int = 1,
+    ):
+        """
+        Train the network for a given number of epochs.
+
+        Parameters:
+        - X: input data, shape (n_samples, n_features)
+        - y: true labels, shape (n_samples,) or (n_samples, n_outputs)
+        - epochs: total epochs to train
+        - batch_size: mini-batch size; if None, use full batch
+        - lr_min: minimum learning rate for cosine decay
+        - on_epoch_end: optional callback function(epoch, loss)
+        - end_on_epoch: interval (in epochs) for calling on_epoch_end callback
+        """
+        # initialize histories
+        self.loss_history = []
+        self.acc_history = []
+
+        # determine batch size
         if batch_size is None or batch_size < 1:
             batch_size = len(X)
+
         for epoch in range(epochs + 1):
-            lr = cosine_decay(epoch, epochs, self.base_lr, lr_min) if self.scheduler else self.base_lr
+            # update learning rate
+            lr = (
+                cosine_decay(epoch, epochs, self.base_lr, lr_min)
+                if getattr(self, 'scheduler', False)
+                else self.base_lr
+            )
+
+            # shuffle data
             perm = np.random.permutation(len(X))
-            X, y = X[perm], y[perm]
-            for start in range(0, len(X), batch_size):
+            X_shuf, y_shuf = X[perm], y[perm]
+
+            # mini-batch updates
+            for start in range(0, len(X_shuf), batch_size):
                 end = start + batch_size
-                zs, acts = self._forward(X[start:end])
-                dWs, dBs = self._backward(zs, acts, y[start:end])
+                zs, acts = self._forward(X_shuf[start:end])
+                dWs, dBs = self._backward(zs, acts, y_shuf[start:end])
                 self._step(dWs, dBs, lr)
+
+            # compute full-data metrics
+            _, acts_full = self._forward(X_shuf)
+            y_pred_full = acts_full[-1]
+            if self.out_dim == 1:
+                y_true = y_shuf.reshape(-1, 1)
+                loss_val = float(self.loss(y_true, y_pred_full))
+                acc_val = accuracy(y_shuf, y_pred_full.flatten())
+            else:
+                loss_val = float(self.loss(y_shuf, y_pred_full))
+                acc_val = multiclass_accuracy(y_shuf, y_pred_full)
+
+            # record histories
+            self.loss_history.append(loss_val)
+            self.acc_history.append(acc_val)
+
+            # callback for live updates (websocket)
+            if on_epoch_end and epoch % end_on_epoch == 0:
+                on_epoch_end(epoch, loss_val)
+            
             if epoch % 100 == 0:
-                _, acts_full = self._forward(X)
-                y_pred_full = acts_full[-1]
-                # reshape for metrics
-                if self.out_dim == 1:
-                    y_pred_vec = y_pred_full.flatten()
-                    loss_val = self.loss(y.reshape(-1, 1), y_pred_full)
-                    acc_val = accuracy(y, y_pred_vec)
-                else:
-                    loss_val = self.loss(y, y_pred_full)
-                    acc_val = multiclass_accuracy(y, y_pred_full)
-                self.loss_history.append(loss_val)
-                self.acc_history.append(acc_val)
-                print(f"Epoch {epoch} | loss {loss_val:.6f} | acc {acc_val:.4f} | lr {lr:.6f}")
+                print(f"Epoch {epoch}/{epochs} - Loss: {loss_val:.4f} - Accuracy: {acc_val:.4f} - Learning Rate: {lr:.6f}")
 
     # ---------------------------------------------- inference -------------------------------------------------- #
     def predict(self, X):

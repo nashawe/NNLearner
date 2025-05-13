@@ -1,8 +1,9 @@
-from fastapi import FastAPI, Request, HTTPException, WebSocket
+from fastapi import FastAPI, Request, HTTPException, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 import asyncio
+
 
 app = FastAPI()
 
@@ -24,6 +25,8 @@ import uuid
 import os
 from models.network import NeuralNetwork
 
+losses_store = {}          # training_id → [ {epoch, loss}, … ]
+queues = {}                # training_id → asyncio.Queue()
 
 # 1. Define the structure of the expected input using a Pydantic mode
 class TrainRequest(BaseModel):
@@ -114,3 +117,46 @@ async def handle_general_error(request: Request, exc: Exception):
             "details": str(exc)
         }
     )
+
+@app.post("/train")
+def train_model(req: TrainRequest, bg: BackgroundTasks):
+    tid = str(uuid.uuid4())
+    losses_store[tid] = []
+    queues[tid] = asyncio.Queue()
+
+    def cb(epoch, loss):
+        pkt = {"epoch": epoch, "loss": round(loss,6)}
+        losses_store[tid].append(pkt)
+        # enqueue for WS
+        asyncio.create_task(queues[tid].put(pkt))
+
+    bg.add_task(
+        run_training_from_api,
+        req.input_size, req.output_size, req.hidden_size, req.num_layers,
+        req.dropout, req.optimizer_choice, req.mode_id, req.batch_size,
+        req.learn_rate, req.epochs, req.init_id, req.data, req.labels,
+        req.save_after_train, req.filename, req.use_scheduler,
+        on_epoch_end=cb
+    )
+    return {"training_id": tid}
+
+@app.get("/loss_history")
+def get_history(training_id: str):
+    return losses_store.get(training_id, [])
+
+@app.websocket("/ws/{training_id}")
+async def loss_ws(ws: WebSocket, training_id: str):
+    await ws.accept()
+    if training_id not in queues:
+        await ws.close()
+        return
+    # send existing
+    for pkt in losses_store[training_id]:
+        await ws.send_json(pkt)
+    # stream new
+    try:
+        while True:
+            pkt = await queues[training_id].get()
+            await ws.send_json(pkt)
+    except WebSocketDisconnect:
+        pass

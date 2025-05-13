@@ -7,15 +7,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "framer-motion": "^12.10.4",
+    "lucide-react": "^0.358.0",
     "react": "18.3.0",
     "react-dom": "18.3.0",
     "react-router-dom": "^6.23.0",
-    "framer-motion": "^12.4.13",
-    "lucide-react": "^0.358.0",
+    "recharts": "^2.15.3",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react-swc": "^3.6.0",
+    "esbuild": "^0.25.4",
     "vite": "^5.2.8"
   }
 }

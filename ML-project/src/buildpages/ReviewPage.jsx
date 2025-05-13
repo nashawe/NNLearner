@@ -12,6 +12,7 @@ export default function ReviewPage({
   onBack,
   onTrain,
 }) {
+  const [trainingParams, setTrainingParams] = useState(null);
   const inputLayer = layers.find((l) => l.type === "input");
   const hiddenLayers = layers.filter((l) => l.type === "hidden");
   const outputLayer = layers.find((l) => l.type === "output");
@@ -131,6 +132,7 @@ export default function ReviewPage({
       filename: payload.filename || "latest_model.npz",
     };
 
+    setTrainingParams(body);
     /* ─────────── 5. fire request + websocket ─────────── */
     try {
       const res = await trainModel(body);

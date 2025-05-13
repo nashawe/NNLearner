@@ -27,6 +27,41 @@ const rippleAnim = {
   },
 };
 
+const settingDescriptions = {
+  learningRate: [
+    "Controls how big each training step is.",
+    "Too high? Model might overshoot.",
+    "Too low? Training is super slow.",
+    "Try values like 0.01 or 0.001.",
+  ],
+  dropout: [
+    "Temporarily 'drops' random neurons during training.",
+    "Prevents overfitting by forcing robustness.",
+    "Only applies during training, not inference.",
+  ],
+  weightInit: [
+    "How your network starts its weights.",
+    "Random is basic; He/Xavier are smarter based on layer size.",
+    "Better init = faster and more stable training.",
+  ],
+  optimizer: [
+    "Controls how weights update during training.",
+    "SGD is simple, Adam is smarter with momentum + adaptive steps.",
+    "Adam works great for most tasks.",
+  ],
+};
+
+function InfoButton({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="ml-2 bg-gray-200 text-gray-700 px-1 rounded-full hover:bg-gray-300"
+    >
+      i
+    </button>
+  );
+}
+
 const modeDescriptions = {
   1: [
     "Good for super simple stuff like predicting a number between 0 and 1.",
@@ -179,6 +214,7 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
   const [weightInit, setWeightInit] = useState(1);
   const [optimizer, setOptimizer] = useState(1);
   const [useLrScheduler, setUseLrScheduler] = useState(false);
+  const [settingInfoId, setSettingInfoId] = useState(null);
 
   const [badge, setBadge] = useState(null);
   const showBadge = (txt) => {
@@ -271,8 +307,8 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
               "1 - Sigmoid + Mean Squared Error",
               "2 - Sigmoid + Binary Cross-Entropy",
               "3 - Tanh + Mean Squared Error",
-              "4 - ReLU (hidden) + Sigmoid (output) + Binary Cross-Entropy",
-              "5 - ReLU (hidden) + Softmax (output) + Cross-Entropy",
+              "4 - ReLU + Sigmoid + Binary Cross-Entropy",
+              "5 - ReLU + Softmax + Cross-Entropy",
             ].map((opt) => {
               const id = parseInt(opt.split(" ")[0], 10);
               const isSelected = mode_id === id;
@@ -395,18 +431,41 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           variants={staggerKids}
           className="p-4 rounded-2xl bg-white shadow-md flex flex-col gap-4"
         >
-          <h2 className="text-base font-bold">Regularization & Init</h2>
+          <h2 className="text-base font-bold">Algorithms and Dropout</h2>
           {/* optimizer */}
-          <h2 className="text-base font-medium">Optimizer</h2>
-          <FlySelect
-            value={reverseMap[optimizer]}
-            options={["SGD", "RMSProp", "Adam"]}
-            onChange={(v) => {
-              const o_val = optimizerMap[v]; // convert to int
-              setOptimizer(o_val);
-              showBadge(v);
-            }}
-          />
+          <div>
+            <div className="flex items-center">
+              <span>Optimizer </span>
+              <InfoButton onClick={() => setSettingInfoId("optimizer")} />
+            </div>
+            <div className="flex gap-3 flex-wrap pt-4">
+              {["SGD", "RMSProp", "Adam"].map((opt) => (
+                <label key={opt} className="relative cursor-pointer text-sm">
+                  <input
+                    type="radio"
+                    name="optimizer"
+                    value={opt}
+                    checked={reverseMap[optimizer] === opt}
+                    onChange={() => {
+                      const val = optimizerMap[opt]; // get int from string
+                      setOptimizer(val); // set optimizer to int
+                      showBadge(`${opt} Optimizer`);
+                    }}
+                    className="peer sr-only"
+                  />
+                  <span
+                    className={`px-3 py-1 border rounded-full ${
+                      reverseMap[optimizer] === opt
+                        ? "bg-gray-900 text-white"
+                        : "hover:bg-gray-100"
+                    }`}
+                  >
+                    {opt}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
           {/* dropout */}
           <div className="flex items-center gap-4">
             <span className="font-medium">Dropout</span>
@@ -417,6 +476,9 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
                 showBadge(v ? "Dropout ON" : "Dropout OFF");
               }}
             />
+            <div className="flex items-center">
+              <InfoButton onClick={() => setSettingInfoId("dropout")} />
+            </div>
           </div>
           <AnimatePresence>
             {useDropout && (
@@ -443,8 +505,11 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           </AnimatePresence>
           {/* weight init */}
           <div>
-            <span className="block mb-3 font-medium">Weight Init</span>
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex items-center">
+              <span>Weight Initializer </span>
+              <InfoButton onClick={() => setSettingInfoId("weightInit")} />
+            </div>
+            <div className="flex gap-3 flex-wrap pt-4">
               {["Random", "Xavier", "He"].map((opt) => (
                 <label key={opt} className="relative cursor-pointer text-sm">
                   <input
@@ -455,7 +520,7 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
                     onChange={() => {
                       const w_val = weightInitMap[opt]; // get int from string
                       setWeightInit(w_val); // set weightInit to int
-                      showBadge(w_val);
+                      showBadge(`${opt} Weight Initializer`);
                     }}
                     className="peer sr-only"
                   />
@@ -482,7 +547,10 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
         >
           <h2 className="text-base font-bold">Learning Rate Tuning</h2>
           <label className="flex flex-col gap-2">
-            <span>Learning Rate</span>
+            <div className="flex items-center">
+              <span>Learning Rate</span>
+              <InfoButton onClick={() => setSettingInfoId("learningRate")} />
+            </div>
             <input
               type="number"
               step="0.001"
@@ -512,6 +580,35 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           </span>
         </motion.div>
       </motion.div>
+
+      <AnimatePresence>
+        {settingInfoId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              className="relative bg-white w-3/4 max-w-md p-6 rounded-lg shadow-2xl"
+            >
+              <button
+                onClick={() => setSettingInfoId(null)}
+                className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 text-2xl"
+              >
+                ×
+              </button>
+              <h3 className="text-xl font-bold mb-4 capitalize">
+                {settingInfoId.replace(/([A-Z])/g, " $1")}
+              </h3>
+              <ul className="list-disc list-inside space-y-2 text-sm">
+                {settingDescriptions[settingInfoId].map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* live badge */}
       <AnimatePresence>
         {badge && (

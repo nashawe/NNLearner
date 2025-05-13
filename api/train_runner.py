@@ -24,6 +24,7 @@ def run_training_from_api(
     save_after_train=False,
     filename="latest_model.npz",
     use_scheduler=False,
+    on_epoch_end=None,
 ):
     # ------------------------------------------------- config + init
     weight_init_fn = WEIGHT_INITS[init_id]     # weight init function
@@ -81,13 +82,8 @@ def run_training_from_api(
         learn_rate=learn_rate,         # pass your 0.001 base LR
     )
                     
-    network.train(
-        X=data,
-        y=labels,
-        epochs=epochs,
-        batch_size=batch_size,
-        lr_min=1e-4,   # floor for cosine decay
-    )
+    network.train(X=data, y=labels, epochs=epochs, batch_size=batch_size, lr_min=1e-4, on_epoch_end=on_epoch_end)
+
 
     # ------------------------------------------------- optional save
     if save_after_train:

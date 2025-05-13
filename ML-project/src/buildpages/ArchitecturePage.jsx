@@ -188,16 +188,18 @@ export default function ArchitecturePage() {
                   Deploy INPUT Layer
                 </motion.button>
               )}
-              {!outputLayer && hiddenLayers.length < MAX_HIDDEN && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.94 }}
-                  onClick={() => deployLayer("hidden")}
-                  className="bg-gray-900 text-white rounded-full py-2 font-semibold shadow"
-                >
-                  Deploy HIDDEN Layer
-                </motion.button>
-              )}
+              {!outputLayer &&
+                hiddenLayers.length < MAX_HIDDEN &&
+                inputLayer && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.94 }}
+                    onClick={() => deployLayer("hidden")}
+                    className="bg-gray-900 text-white rounded-full py-2 font-semibold shadow"
+                  >
+                    Deploy HIDDEN Layer
+                  </motion.button>
+                )}
               {!outputLayer && hiddenLayers.length >= 1 && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
