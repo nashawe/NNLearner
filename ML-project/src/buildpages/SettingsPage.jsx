@@ -2,12 +2,12 @@
    fixes:
    • dropped custom thumb overlay → plain sliders
    • Dropout toggle no longer inflates
-   • batch-size dropdown sits first in General Trainin’
+   • batch-size dropdown sits first in General Training
    • three-column grid so every box fits without scroll (1080 p tall)
 */
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeftCircle, ArrowRightCircle } from "lucide-react";
+import { ArrowLeftCircle, ArrowRightCircle, Info } from "lucide-react";
 
 /* ─── helpers ─── */
 const staggerKids = {
@@ -28,6 +28,13 @@ const rippleAnim = {
 };
 
 const settingDescriptions = {
+  LearningRateScheduler: [
+    "Adjusts learning rate during training.",
+    "Starts high, then lowers it over time.",
+    "Helps model learn faster at first, then fine-tune.",
+    "Good for complex models or large datasets.",
+    "Can help avoid overshooting the best weights.",
+  ],
   learningRate: [
     "Controls how big each training step is.",
     "Too high? Model might overshoot.",
@@ -37,17 +44,27 @@ const settingDescriptions = {
   dropout: [
     "Temporarily 'drops' random neurons during training.",
     "Prevents overfitting by forcing robustness.",
-    "Only applies during training, not inference.",
+    "Only applies during training, not predicting after the model is trained.",
+    "If your data set is small, this will help prevent the model from just memorizing the training data.",
   ],
   weightInit: [
     "How your network starts its weights.",
-    "Random is basic; He/Xavier are smarter based on layer size.",
     "Better init = faster and more stable training.",
+    "Surprisingly, this setting impacts training quality a lot.",
+    "Xavier works well for sigmoid/tanh, He is better for ReLU.",
+    "Random usually does NOT work well and is mostly there for testing and seeing the difference between weight inits.",
   ],
   optimizer: [
     "Controls how weights update during training.",
     "SGD is simple, Adam is smarter with momentum + adaptive steps.",
     "Adam works great for most tasks.",
+  ],
+  batchSize: [
+    "How many samples are processed before the model updates its weights.",
+    "Smaller = slower training but more precise updates (can help generalization).",
+    "Larger = faster training but may converge to worse minima or overfit.",
+    "Common values: 16, 32, 64 — balance speed, stability, and memory usage.",
+    "Also affects how smooth or noisy the loss curve is.",
   ],
 };
 
@@ -55,45 +72,50 @@ function InfoButton({ onClick }) {
   return (
     <button
       onClick={onClick}
-      className="ml-2 bg-gray-200 text-gray-700 px-1 rounded-full hover:bg-gray-300"
+      className="ml-1 bg-transparent rounded-full hover:bg-gray-300"
     >
-      i
+      <Info size={18} />
     </button>
   );
 }
 
 const modeDescriptions = {
   1: [
-    "Good for super simple stuff like predicting a number between 0 and 1.",
-    "Uses sigmoid to squish values into a 0–1 range.",
-    "Mean Squared Error (MSE) checks how far off the model's guesses are.",
+    "Mainly for educational purposes because of simplicity.",
+    "Uses sigmoid to squish values into a 0-1 range.",
     "Not ideal for deep nets — can get slow or stuck learning.",
-    "Great when you just wanna toy around or do a basic rain prediction.",
+    "Is usually quite slow, but it is a good example of the most basic model mode.",
+    "Best for: teaching basic neural nets or visualizing how backprop works step-by-step.",
   ],
   2: [
     "Uses sigmoid + Binary Cross-Entropy for better yes/no probability learning.",
     "Better at handling uncertainty than MSE.",
-    "Perfect for spam detection, cat/not-cat, or any binary question.",
-    "A bit more math, but way more stable for binary tasks.",
+    "Perfect for any binary question (eg. cat vs. not a cat).",
+    "BCE is a bit more complicated than MSE, but way more stable for binary tasks.",
+    "Best for: clean binary classification datasets like moons, spam detection, or medical diagnosis (yes/no).",
   ],
   3: [
-    "Switches to tanh, giving outputs from -1 to 1 instead of 0–1.",
-    "Still uses MSE to measure errors.",
+    "Tanh gives outputs from -1 to 1 instead of 0-1 (unlike sigmoid).",
+    "Still uses MSE to measure loss.",
     "Good if your data has negative values or you want symmetric activation.",
-    "Works for stuff like direction or temperature shifts.",
-    "More balanced than sigmoid, but still slower in deep nets.",
+    "Works for stuff that require direction.",
+    "One example is automated driving: if output is negative, car will turn left. If positive, it will turn right.",
+    "Best for: tasks where outputs have natural directionality, like steering, movement control, or joystick prediction.",
   ],
   4: [
     "ReLU in hidden layers speeds up learning and avoids small gradients.",
     "Ends with sigmoid + BCE, so outputs are clear probabilities.",
-    "Watch out: ReLUs can die if the learning rate’s too high.",
-    "Great for deeper binary classifiers (e.g., dog vs. no dog).",
+    "Watch out: ReLUs can die if the learning rate's too high.",
+    "Great for deeper and non-linear binary classifiers.",
+    "Best for: modern binary classifiers with complex data — like image classification (dog vs. not dog), sentiment analysis, etc.",
   ],
   5: [
+    "This is specifically for multi-class classification.",
     "ReLU hidden layers + Softmax output for multi-class percentages.",
     "Cross-Entropy loss pairs perfectly with softmax.",
-    "Use when you’ve got more than two choices (digits 0–9, categories, etc.).",
+    "Use when you've got more than two choices (digits 0-9, categories, etc.).",
     "Industry standard for most classification problems.",
+    "Best for: MNIST digit recognition, language models, facial expression classification, etc.",
   ],
 };
 
@@ -340,12 +362,12 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
                   <button
                     onClick={() => setInfoId(id)}
                     className="
-                      hidden group-hover:block absolute top-2 right-2
-                      bg-gray-200 text-gray-700 p-1 rounded-full
+                       group-hover:block absolute top-2 right-2
+                      bg-transparent text-gray-700 p-1 rounded-full
                       hover:bg-gray-300
                     "
                   >
-                    i
+                    <Info size={18} />
                   </button>
                 </div>
               );
@@ -387,16 +409,16 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           )}
         </AnimatePresence>
 
-        {/* General Trainin’ */}
         <motion.div
           custom={1}
           variants={staggerKids}
-          className="p-4 rounded-2xl bg-white shadow-md flex flex-col gap-4"
+          className="p-4 rounded-2xl bg-white shadow-md flex flex-col"
         >
           <h2 className="text-base font-bold">General Training</h2>
 
-          {/* Batch first so dropdown visible */}
-          <FloatInput label="Batch Size">
+          {/* Batch size dropdown */}
+          <FloatInput>
+            <span className="pb-2">Batch Size</span>
             <FlySelect
               value={batchSize}
               options={[1, 8, 16, 32, 64, 128]}
@@ -405,13 +427,14 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
                 showBadge(`Batch Size: ${v}`);
               }}
             />
-            <span className="text-[11px] opacity-60 py-4">
+            <span className="text-[11px] opacity-60 pt-3">
               1 → feed samples one-by-one
             </span>
           </FloatInput>
 
           {/* epochs */}
-          <FloatInput label="Epochs">
+          <FloatInput>
+            <span className="pb-2">Epochs</span>
             <input
               type="number"
               min={1}
@@ -425,7 +448,7 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           </FloatInput>
         </motion.div>
 
-        {/* Reg + Init */}
+        {/* Algo and Dropout */}
         <motion.div
           custom={2}
           variants={staggerKids}
@@ -435,10 +458,17 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           {/* optimizer */}
           <div>
             <div className="flex items-center">
-              <span>Optimizer </span>
-              <InfoButton onClick={() => setSettingInfoId("optimizer")} />
+              <span className="pr-3">Optimizer </span>
+              <button
+                onClick={() => setSettingInfoId("optimizer")}
+                className="top-2 right-2 
+                bg-transparent text-gray-700 p-1 rounded-full
+                hover:bg-gray-300"
+              >
+                <Info size={18} />
+              </button>
             </div>
-            <div className="flex gap-3 flex-wrap pt-4">
+            <div className="flex gap-3 flex-wrap pt-3 pb-4">
               {["SGD", "RMSProp", "Adam"].map((opt) => (
                 <label key={opt} className="relative cursor-pointer text-sm">
                   <input
@@ -467,7 +497,7 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
             </div>
           </div>
           {/* dropout */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center pb-4 gap-4">
             <span className="font-medium">Dropout</span>
             <GlowToggle
               enabled={useDropout}
@@ -477,7 +507,14 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
               }}
             />
             <div className="flex items-center">
-              <InfoButton onClick={() => setSettingInfoId("dropout")} />
+              <button
+                onClick={() => setSettingInfoId("dropout")}
+                className="top-2 right-2 
+                bg-transparent text-gray-700 p-1 rounded-full
+                hover:bg-gray-300"
+              >
+                <Info size={18} />
+              </button>
             </div>
           </div>
           <AnimatePresence>
@@ -507,9 +544,16 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           <div>
             <div className="flex items-center">
               <span>Weight Initializer </span>
-              <InfoButton onClick={() => setSettingInfoId("weightInit")} />
+              <button
+                onClick={() => setSettingInfoId("weightInit")}
+                className="top-2 right-2 ml-3
+                bg-transparent text-gray-700 p-1 rounded-full
+                hover:bg-gray-300"
+              >
+                <Info size={18} />
+              </button>
             </div>
-            <div className="flex gap-3 flex-wrap pt-4">
+            <div className="flex gap-3 flex-wrap pt-3 pb-1">
               {["Random", "Xavier", "He"].map((opt) => (
                 <label key={opt} className="relative cursor-pointer text-sm">
                   <input
@@ -549,14 +593,19 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           <label className="flex flex-col gap-2">
             <div className="flex items-center">
               <span>Learning Rate</span>
-              <InfoButton onClick={() => setSettingInfoId("learningRate")} />
+              <button
+                onClick={() => setSettingInfoId("learningRate")}
+                className="top-2 right-2 ml-3
+                bg-transparent text-gray-700 p-1 rounded-full
+                hover:bg-gray-300"
+              >
+                <Info size={18} />
+              </button>
             </div>
             <input
               type="number"
               step="0.001"
-              min={0.0001}
-              max={0.1}
-              value={learningRate}
+              value={Math.abs(learningRate)}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
                 setLearningRate(v);
@@ -565,8 +614,8 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
               className="border px-3 py-2 rounded w-full bg-white"
             />
           </label>
-          <div className="flex items-center gap-4 mt-2">
-            <span className="font-medium">Learning Rate Scheduler</span>
+          <div className="flex items-center gap-3 mt-2">
+            <span>Use LR Scheduler</span>
             <GlowToggle
               enabled={useLrScheduler}
               setEnabled={(v) => {
@@ -574,6 +623,14 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
                 showBadge(v ? "Scheduler ON" : "Scheduler OFF");
               }}
             />
+            <button
+              onClick={() => setSettingInfoId("LearningRateScheduler")}
+              className="top-2 right-2
+                bg-transparent text-gray-700 p-1 rounded-full
+                hover:bg-gray-300"
+            >
+              <Info size={18} />
+            </button>
           </div>
           <span className="text-[11px] opacity-60 mt-1">
             Cosine decay from current LR → 0.0001
@@ -660,6 +717,14 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
             )}
           </motion.button>
         ))}
+      </div>
+
+      {/* Footer */}
+      <div>
+        <p className="absolute bottom-24 left-1/2 transform -translate-x-1/2 text-s font-medium text-gray-800">
+          Be sure to click the info buttons near each setting to learn more
+          about what each one does!
+        </p>
       </div>
     </motion.div>
   );

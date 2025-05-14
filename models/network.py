@@ -15,6 +15,7 @@ Quick checklist
 """
 from __future__ import annotations
 import numpy as np
+import os
 from utils.lr_scheduler import cosine_decay
 from utils.metrics import accuracy, multiclass_accuracy
 
@@ -229,7 +230,46 @@ class NeuralNetwork:
                 on_epoch_end(epoch, loss_val)
             
             if epoch % 100 == 0:
-                print(f"Epoch {epoch}/{epochs} - Loss: {loss_val:.4f} - Accuracy: {acc_val:.4f} - Learning Rate: {lr:.6f}")
+                print(f"Epoch {epoch}/{epochs} - Loss: {loss_val:.6f} - Accuracy: {acc_val:.3f} - Learning Rate: {lr:.4f}")
+                
+    # ---------------------------------------------- save model --------------------------------------------- #
+    def save_model(self, filename: str, mode_id: int,
+                norm_stats: dict | None = None):
+        import os, numpy as np
+        os.makedirs("saved_models", exist_ok=True)
+        fp = f"saved_models/{filename}.npz"
+
+        params = {
+            "in_dim":   self.in_dim,
+            "hid_units": self.hid_units,
+            "n_hidden": self.n_hidden,
+            "out_dim":  self.out_dim,
+            "mode_id":  mode_id,
+        }
+
+        # layer params
+        for i, (W, b) in enumerate(zip(self.weights, self.biases)):
+            params[f"W{i}"] = W
+            params[f"b{i}"] = b
+
+        # add normalization meta
+        if norm_stats:
+            params["norm_method"] = norm_stats["method"]          # "max" | "zscore"
+            for k, v in norm_stats.items():
+                if k != "method":
+                    params[f"norm_{k}"] = v
+
+        np.savez(fp, **params)
+        print(f"Model has been successfully saved to {fp}")
+
+    def _apply_norm(self, X):
+        if getattr(self, "norm_method", "none") == "max":
+            return X / self.norm_max
+        if self.norm_method == "zscore":
+            return (X - self.norm_mean) / self.norm_std
+        return X
+
+
 
     # ---------------------------------------------- inference -------------------------------------------------- #
     def predict(self, X):

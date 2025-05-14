@@ -31,21 +31,48 @@ def run_training_from_api(
     config = MODES[mode_id]   
     
     # ------------------------------------------------- for debugging
-    print ("config: "+ str(config))
+    print("\nBATCH SIZE: " +  str(batch_size))
+    print("EPOCHS: " + str(epochs))
+    print("DROPOUT: " + str(dropout))
+    print("\n-\n")
+    print("LEARNING RATE: " + str(learn_rate))
+    print("LR SCHEDULER: " + str(use_scheduler))
+    print("\n-\n")
+    print("FEATURE SHAPE: " + str(np.array(data).shape))
+    print("LABELS SHAPE: " + str(np.array(labels).shape))
+    print("\n-\n")
+    print("INPUT SIZE: " + str(input_size))
+    print("OUTPUT SIZE: " + str(output_size))
+    print("HIDDEN SIZE: " + str(hidden_size))
+    print("NUMBER OF LAYERS: " + str(num_layers))
+    print("\n-\n")
     
-    print("batch size: " +  str(batch_size))
-    print("learning rate: " + str(learn_rate))
-    print("epochs: " + str(epochs))
-    print("data shape: " + str(np.array(data).shape))
-    print("labels shape: " + str(np.array(labels).shape))
-    print("input size: " + str(input_size))
-    print("output size: " + str(output_size))
-    print("hidden size: " + str(hidden_size))
-    print("num layers: " + str(num_layers))
-    print("dropout: " + str(dropout))
-    print("optimizer choice: " + str(optimizer_choice))
-    print("Learning rate scheduler: " + str(use_scheduler))
-    print("init fn: " + str(weight_init_fn))
+    if mode_id == 1:
+        print("1: sigmoid + MSE\n")
+    elif mode_id == 2:
+        print("2: sigmoid + BCE\n")
+    elif mode_id == 3:
+        print("3: tanh + BCE\n")
+    elif mode_id == 4:
+        print("4: ReLU + Sigmoid + BCE\n")
+    elif mode_id == 5:
+        print("5: ReLU + softmax + CE\n")
+    
+    if optimizer_choice == 1:
+        print("SGD\n")
+    elif optimizer_choice == 2:
+        print("RMSProp\n")
+    elif optimizer_choice == 3:
+        print("Adam\n")
+
+    if init_id == 1:
+        print("Random init\n")
+    elif init_id == 2:
+        print("Xavier init\n")
+    elif init_id == 3:
+        print("He init\n")
+    
+    print("Model Training:\n")
     
     # ------------------------------------------------- labels ↔ output_size
     labels  = np.array(labels, dtype=np.float64)
@@ -86,17 +113,20 @@ def run_training_from_api(
 
 
     # ------------------------------------------------- optional save
+    
     if save_after_train:
-        network.save_model(
-            filename,
-            input_size, hidden_size, num_layers,
-            dropout_rate=dropout,
-            optimizer_choice=optimizer_choice,
-            mode_id=mode_id, bsize=batch_size, 
-            use_scheduler=use_scheduler,
-            init_fn=init_id,
-            learn_rate=learn_rate,
-        )
+        norm_stats = None               # default: no scaling
+
+        # if the mode asked for z-score normalisation we already computed mu & sigma
+        if config.get("normalize"):
+            norm_stats = {
+                "method": "zscore",
+                "mean": mu,
+                "std":  sigma
+            }
+
+        network.save_model(filename, mode_id, norm_stats)
+
 
     return {
         "message":        "Training complete",

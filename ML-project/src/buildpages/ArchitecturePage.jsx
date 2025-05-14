@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 import ProgressBar from "../components/ProgressBar";
@@ -7,7 +7,7 @@ import PayloadPage from "./PayloadPage";
 import ReviewPage from "./ReviewPage";
 import {
   ArrowRight,
-  ArrowLeftCircle,
+  CornerDownLeft,
   RotateCcw,
   RefreshCcw,
   Info,
@@ -48,11 +48,9 @@ const CIRCLE_SIZE = 20;
 const nextLayerType = (layers) => {
   const hasInput = layers.some((l) => l.type === "input");
   const hasOutput = layers.some((l) => l.type === "output");
-  const hiddenCnt = layers.filter((l) => l.type === "hidden").length;
 
   if (!hasInput) return "input";
-  if (!hasOutput && hiddenCnt === 0) return "hidden"; // force ≥1 hidden
-  if (!hasOutput && hiddenCnt >= 1) return "output";
+  if (!hasOutput) return "hidden"; // allow stacking until output
   return null;
 };
 
@@ -63,6 +61,25 @@ export default function ArchitecturePage() {
   const [trainSettings, setTrainSettings] = useState({});
   const [payload, setPayload] = useState({});
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const next = nextLayerType(layers);
+
+      if (e.key === "Enter" && !e.metaKey) {
+        if (next === "input" || next === "hidden") {
+          deployLayer(next);
+        }
+      }
+      if (e.key === "Enter" && e.metaKey) {
+        if (next === "output") {
+          deployLayer("output");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [layers, neuronCount]); // rerun if layers or count changes
   /* deploy layers */
   const deployLayer = (type) => {
     if (type === "hidden") {
@@ -183,11 +200,13 @@ export default function ArchitecturePage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.94 }}
                   onClick={() => deployLayer("input")}
-                  className="bg-gray-900 text-white rounded-full py-2 font-semibold shadow"
+                  className="bg-gray-900 text-white rounded-full py-4 -mx-1 font-semibold shadow flex items-center justify-center gap-2"
                 >
-                  Deploy INPUT Layer
+                  <span>Deploy INPUT Layer</span>
+                  <CornerDownLeft size={14} className="opacity-70 ml-1" />
                 </motion.button>
               )}
+
               {!outputLayer &&
                 hiddenLayers.length < MAX_HIDDEN &&
                 inputLayer && (
@@ -195,26 +214,28 @@ export default function ArchitecturePage() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.94 }}
                     onClick={() => deployLayer("hidden")}
-                    className="bg-gray-900 text-white rounded-full py-2 font-semibold shadow"
+                    className="bg-gray-900 text-white rounded-full py-4 -mx-1 font-semibold shadow flex items-center justify-center gap-2"
                   >
-                    Deploy HIDDEN Layer
+                    <span>Deploy HIDDEN Layer</span>
+                    <CornerDownLeft size={14} className="opacity-70 ml-1" />
                   </motion.button>
                 )}
+
               {!outputLayer && hiddenLayers.length >= 1 && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.94 }}
                   onClick={() => deployLayer("output")}
-                  className="bg-gray-900 text-white rounded-full py-2 font-semibold shadow"
+                  className="bg-gray-900 text-white rounded-full py-4 -mx-1 font-semibold shadow flex items-center justify-center gap-2"
                 >
-                  Deploy OUTPUT Layer
+                  <span>Deploy OUTPUT Layer</span>
                 </motion.button>
               )}
             </div>
 
             {/* summary */}
-            <div className="mt-6 bg-white rounded-xl shadow p-4 w-full text-sm">
-              <div className="flex items-center gap-1 font-semibold mb-2">
+            <div className="mt-6 bg-white rounded-xl shadow-lg p-4 w-full text-md">
+              <div className="flex items-center gap-1 font-bold mb-2">
                 <Info size={14} /> Summary
               </div>
               <div className="flex justify-between">

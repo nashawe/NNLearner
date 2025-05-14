@@ -12,78 +12,105 @@ WEIGHT_INITS = {
     2: xavier_init,
     3: he_init,
 }
+
 def load_full_model(filename):
-    load_path = os.path.join("saved_models", filename)
-    data = np.load(load_path)
+    data = np.load(os.path.join("saved_models", filename))
 
-    #gather NN attributes from previously saved file
-    input_size = int(data["input_size"])
-    hidden_size = int(data["hidden_size"])
-    num_layers = int(data["num_layers"])
-    dropout_rate = float(data["dropout_rate"])
-    optimizer_choice = int(data["optimizer_choice"])
-    mode_id = int(data["mode_id"])
-    bsize = int(data["batch_size"])
-    output_size = int(data["output_size"])
-    learn_rate = float(data["learn_rate"])
-    use_scheduler = bool(data["use_scheduler"])
-    init_id = int(data["init_fn"])
-    epochs = int(data["epochs"])
-    init_fn = WEIGHT_INITS[init_id] 
+    in_dim    = int(data["in_dim"])
+    hid_units = int(data["hid_units"])
+    n_hidden  = int(data["n_hidden"])
+    out_dim   = int(data["out_dim"])
+    mode_id   = int(data["mode_id"])
+    config    = MODES[mode_id]
 
-    config = MODES[mode_id] 
+    # stub init that returns zeros so __init__ won’t insert Nones
+    zeros_init = lambda fin, fout: np.zeros((fin, fout), dtype=np.float64)
 
-
-    init_fn = WEIGHT_INITS[init_id] #weight init function
-    #create an instance of the NeuralNetwork class with the following attributes
-    network = NeuralNetwork(
-        input_size=input_size,
-        hidden_size=hidden_size,
-        num_layers=num_layers,
-        output_size=output_size,
-        config=config,
-        dropout_rate=dropout_rate,
-        init_fn=init_fn,
-        optimizer_choice=optimizer_choice,
-        use_scheduler=use_scheduler,
-        learn_rate=learn_rate,
-        epochs=epochs,
+    net = NeuralNetwork(
+        input_dim=in_dim,
+        hidden_units=hid_units,
+        hidden_layers_count=n_hidden,
+        output_dim=out_dim,
+        mode_cfg=config,
+        dropout_rate=0.0,
+        init_fn=zeros_init,      # <— use zeros here
+        optimizer_choice=1,
+        use_scheduler=False,
+        learn_rate=0.0,
     )
 
-    #basically build back up the network with for loops
-    for layer_index, layer in enumerate(network.hidden_layers):
-        for neuron_index, neuron in enumerate(layer):
-            key_w = f"hidden_{layer_index}_{neuron_index}_weights"
-            key_b = f"hidden_{layer_index}_{neuron_index}_bias"
-            neuron.weights = data[key_w]
-            neuron.bias = data[key_b]
+    # overwrite with your real trained params
+    net.weights = [data[f"W{i}"] for i in range(n_hidden + 1)]
+    net.biases  = [data[f"b{i}"] for i in range(n_hidden + 1)]
 
-    for i, neuron in enumerate(network.output_layer):
-        neuron.weights = data[f"output_{i}_weights"]
-        neuron.bias = data[f"output_{i}_bias"]
+    # rebuild optimizer state arrays to match shapes
+    net.state = [
+        {"m": np.zeros(W.shape), "v": np.zeros(W.shape),
+         "mb": np.zeros(b.shape), "vb": np.zeros(b.shape)}
+        for W, b in zip(net.weights, net.biases)
+    ]
+
+       # pull norm metadata
+    net.norm_method = data.get("norm_method", "none")
+    if net.norm_method == "max":
+        net.norm_max = data["norm_max"]
+    elif net.norm_method == "zscore":
+        net.norm_mean = data["norm_mean"]
+        net.norm_std  = data["norm_std"]
+
+    return net, config
+
+def test_model_loop(network):
+    while True:
+        print("Paste samples, blank line when done (or 'q' to quit):")
+        lines = []
+        while True:
+            ln = input().strip()
+            if ln.lower() == 'q':
+                return
+            if ln == "":
+                break
+            lines.append(ln)
+        if not lines:
+            continue
+
+        # parse → array
+        try:
+            X = np.vstack([np.fromstring(l, sep=',') for l in lines])
+        except Exception as e:
+            print("Parse error:", e)
+            continue
+
+        print("\n=== Predictions ===")
+        X = network._apply_norm(X)            # <- normalize w/ saved stats
+        probs = network.predict(X)
+
+        binary = network.out_dim == 1
+        for i, p in enumerate(probs, 1):
+            if binary:
+                prob  = float(p[0])               # shape (1,)
+                label = int(prob >= 0.5)
+                print(f"Sample #{i}: {label}  (p={prob:.3f})")
+            else:
+                label = int(np.argmax(p))
+                print(f"Sample #{i}: {label}")
+        print()
 
 
-    print(f"\nModel loaded from {filename}")
-    print(f"Model Architecture:\n- Input size: {input_size}\n- Hidden layers: {num_layers}\n- Neurons per layer: {hidden_size}\n- Number of output neurons: {output_size}\n- Dropout rate: {dropout_rate}\n- Optimizer: {optimizer_choice}\n- Mode ID: {mode_id}\n- Batch size: {bsize}\n- Learning rate: {learn_rate}\n- Learning rate scheduler: {use_scheduler}\n- Weight initialization method: {init_id}\n- Epochs: {epochs}\n")
-    
-    return network, config
+
 
 if __name__ == '__main__':
-    print("Do you want to load a previously saved model? (y/n): ")
-    load_model_choice = input().strip().lower()
-
+    load_model_choice = input("Would you like to load a pre-trained model? (y/n): ").strip().lower()
     if load_model_choice == "y":
         filename = input("Enter filename (e.g., my_model.npz): ").strip()
         if not filename.endswith(".npz"):
             filename += ".npz"
         network, config = load_full_model(filename)
 
-        # Optionally: test it or resume training
-
         test_choice = input("Would you like to test the loaded model? (y/n): ").strip().lower()
         if test_choice == "y":
-            test_model_loop(network, config)
-        exit() #dont do the rest of main because model was already loaded and used
+            test_model_loop(network)
+            exit()
 
     # User input for network parameters and training data
     output_size = int(input("Enter the number of outputs per sample (e.g., 1 for binary, 3 for 3-class classification): "))
@@ -244,9 +271,7 @@ if __name__ == '__main__':
             return one_hot
         labels = np.array([to_one_hot(label, output_size) for label in labels])
 
-    # Optional normalization
-    if config.get("normalize"):
-        data = data / 10.0
+
       
     #create network
     network = NeuralNetwork(
