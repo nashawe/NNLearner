@@ -71,109 +71,145 @@ export default function PayloadPage({ onBack, onContinue, onSave }) {
   const [filename, setFilename] = useState("");
   const [exitCurtain, setExitCurtain] = useState(false);
 
-  /* 🔑 push the payload up to ArchitecturePage whenever it changes */
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const txt = evt.target.result.trim();
+      const lines = txt.split(/\r?\n/).filter(Boolean);
+      const features = lines.map((l) => {
+        const cols = l.split(",").map((s) => s.trim());
+        return cols.slice(0, -1).join(",");
+      });
+      const lbls = lines.map((l) => {
+        const cols = l.split(",").map((s) => s.trim());
+        return cols.at(-1);
+      });
+      setData(features.join("\n"));
+      setLabels(lbls.join(","));
+    };
+    reader.readAsText(file);
+  };
+
+  /* push the payload up to ArchitecturePage whenever it changes */
   useEffect(() => {
     onSave?.({ data, labels, saveAfter, filename });
   }, [data, labels, saveAfter, filename, onSave]);
 
   return (
     <motion.div
-      className="relative p-6 flex flex-col h-[calc(100vh-90px)] bg-gray-50 text-gray-900 overflow-hidden"
+      className="relative h-[calc(100vh-90px)] w-full bg-gray-50 text-gray-900 flex flex-col items-center overflow-hidden p-6"
       initial="hidden"
       animate="show"
       variants={{ show: { transition: { staggerChildren: 0.1 } } }}
     >
-      {/* breadcrumb */}
-      <div className="flex gap-2 items-center px-6 pb-3 text-sm font-medium">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-1 hover:text-gray-600"
-        >
-          <ArrowLeftCircle size={18} /> Settings
-        </button>
-        <span className="opacity-50">→</span>
-        <span className="font-bold">Data</span>
+      {/* PAGE CONTENT WRAPPER */}
+      <div className="w-full max-w-5xl flex flex-col flex-1">
+        {/* breadcrumb */}
+        <div className="flex items-center gap-2 px-2 pb-4 text-sm font-medium">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1 hover:text-gray-600"
+          >
+            <ArrowLeftCircle size={18} /> Settings
+          </button>
+          <span className="opacity-50">→</span>
+          <span className="font-bold">Data</span>
+        </div>
+
+        {/* CARDS */}
+        <motion.div className="grid w-full gap-6 md:grid-cols-2">
+          {/* DATA CARD */}
+          <motion.section
+            custom={0}
+            variants={staggerKids}
+            className="bg-white shadow-lg rounded-lg p-6 flex flex-col"
+          >
+            <h2 className="font-semibold text-lg">Features</h2>
+            <FloatingInput
+              as="textarea"
+              id="data"
+              label="Paste data lines"
+              rows={8}
+              placeholder=" "
+              value={data}
+              setValue={setData}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Each line = one record, comma-separated.
+            </p>
+
+            <FloatingInput
+              id="labels"
+              label="Label row"
+              placeholder=" "
+              value={labels}
+              setValue={setLabels}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Single line, comma-separated, matches record count.
+            </p>
+
+            <p className="text-sm text-gray-500 mt-6 text-center">— or —</p>
+
+            <motion.label
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.97 }}
+              htmlFor="csvUpload"
+              className="mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-indigo-600 text-white cursor-pointer shadow hover:shadow-lg transition"
+            >
+              <ArrowRightCircle size={18} />
+              Upload CSV
+              <input
+                id="csvUpload"
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </motion.label>
+          </motion.section>
+
+          {/* FILE OPTIONS CARD */}
+          <motion.section
+            custom={2}
+            variants={staggerKids}
+            className="bg-white shadow-lg rounded-lg p-6 flex flex-col"
+          >
+            <h2 className="font-semibold text-lg">File options</h2>
+            <PillToggle
+              id="saveAfter"
+              enabled={saveAfter}
+              setEnabled={setSaveAfter}
+            />
+            <AnimatePresence>
+              {saveAfter && (
+                <motion.div
+                  key="filename-input"
+                  custom={0.5}
+                  variants={staggerKids}
+                  className="mt-4"
+                >
+                  <FloatingInput
+                    id="filename"
+                    label="File name"
+                    placeholder=" "
+                    value={filename}
+                    setValue={setFilename}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Model saved under /models.
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.section>
+        </motion.div>
       </div>
 
-      <motion.div className="grid gap-6 xl:grid-cols-3 md:grid-cols-2">
-        {/* DATA CARD */}
-        <motion.section
-          custom={0}
-          variants={staggerKids}
-          className="bg-white shadow-lg rounded-lg p-6 flex flex-col"
-        >
-          <h2 className="font-semibold text-lg">CSV Data</h2>
-          <FloatingInput
-            as="textarea"
-            id="data"
-            label="Paste data lines"
-            rows={8}
-            placeholder=" "
-            value={data}
-            setValue={setData}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Each line represent a record. Comma-separated.
-          </p>
-        </motion.section>
-
-        {/* LABEL CARD */}
-        <motion.section
-          custom={1}
-          variants={staggerKids}
-          className="bg-white shadow-lg rounded-lg p-6 flex flex-col"
-        >
-          <h2 className="font-semibold text-lg">Labels</h2>
-          <FloatingInput
-            id="labels"
-            label="Label row"
-            placeholder=" "
-            value={labels}
-            setValue={setLabels}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Single line, comma-separated, matching data columns.
-          </p>
-        </motion.section>
-
-        {/* FILE OPTIONS CARD */}
-        <motion.section
-          custom={2}
-          variants={staggerKids}
-          className="bg-white shadow-lg rounded-lg p-6 flex flex-col"
-        >
-          <h2 className="font-semibold text-lg">File options</h2>
-          <PillToggle
-            id="saveAfter"
-            enabled={saveAfter}
-            setEnabled={setSaveAfter}
-          />
-          <AnimatePresence>
-            {saveAfter && (
-              <motion.div
-                key="filename-input"
-                custom={3}
-                variants={staggerKids}
-                className="mt-4"
-              >
-                <FloatingInput
-                  id="filename"
-                  label="File name"
-                  placeholder=" "
-                  value={filename}
-                  setValue={setFilename}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Model gon’ save under /models.
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.section>
-      </motion.div>
-
       {/* nav buttons */}
-      <div className="fixed bottom-6 right-6 flex gap-4">
+      <div className="absolute bottom-6 right-6 flex gap-4">
         {["Back", "Continue"].map((btn) => (
           <motion.button
             key={btn}
@@ -184,17 +220,6 @@ export default function PayloadPage({ onBack, onContinue, onSave }) {
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.94 }}
           >
-            <AnimatePresence>
-              <motion.span
-                className="absolute inset-0 opacity-0"
-                variants={{ hover: rippleAnim }}
-              >
-                <motion.span
-                  variants={rippleAnim}
-                  className="absolute left-1/2 top-1/2 w-1 h-1 bg-current rounded-full"
-                />
-              </motion.span>
-            </AnimatePresence>
             {btn === "Back" ? (
               <>
                 <ArrowLeftCircle size={20} className="inline mr-1" /> Back

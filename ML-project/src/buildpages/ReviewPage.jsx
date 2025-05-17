@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeftCircle, Rocket } from "lucide-react";
-import { trainModel, subTrainStatus } from "../services/api";
+import { trainModel, fetchTrainingHistory } from "../services/api";
 import { useNavigate } from "react-router-dom";
 
 export default function ReviewPage({
@@ -35,7 +35,6 @@ export default function ReviewPage({
       return;
     }
 
-    navigate("/train");
     console.log("Training...");
     /* ─────────── 0. quick guards ─────────── */
     if (!payload?.data?.trim() || !payload?.labels?.trim()) {
@@ -131,23 +130,7 @@ export default function ReviewPage({
       save_after_train: payload.saveAfter,
       filename: payload.filename || "latest_model.npz",
     };
-
-    setTrainingParams(body);
-    /* ─────────── 5. fire request + websocket ─────────── */
-    try {
-      const res = await trainModel(body);
-      console.log("train OK →", res);
-
-      const unsub = subTrainStatus((msg) => {
-        setProgress?.(msg);
-        if (msg.status === "completed") unsub();
-      });
-
-      onTrain?.(res); // let parent know training done
-    } catch (err) {
-      console.error(err);
-      alert(`Backend error: ${err.message}`);
-    }
+    navigate("/train", { state: { trainingParams: body } });
   }
 
   return (

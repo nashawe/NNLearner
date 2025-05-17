@@ -180,18 +180,20 @@ class NeuralNetwork:
         - epochs: total epochs to train
         - batch_size: mini-batch size; if None, use full batch
         - lr_min: minimum learning rate for cosine decay
-        - on_epoch_end: optional callback function(epoch, loss)
-        - end_on_epoch: interval (in epochs) for calling on_epoch_end callback
+        - loss_history: list to store loss values
+        - acc_history: list to store accuracy values
+        - lr_history: list to store learning rates
         """
         # initialize histories
         self.loss_history = []
         self.acc_history = []
+        self.lr_history = []
 
         # determine batch size
         if batch_size is None or batch_size < 1:
             batch_size = len(X)
 
-        for epoch in range(epochs + 1):
+        for epoch in range(epochs):
             # update learning rate
             lr = (
                 cosine_decay(epoch, epochs, self.base_lr, lr_min)
@@ -224,13 +226,16 @@ class NeuralNetwork:
             # record histories
             self.loss_history.append(loss_val)
             self.acc_history.append(acc_val)
-
-            # callback for live updates (websocket)
-            if on_epoch_end and epoch % end_on_epoch == 0:
-                on_epoch_end(epoch, loss_val)
+            self.lr_history.append(lr)
+            self.final_metrics = {
+                "loss": loss_val,
+                "accuracy": acc_val,
+                "learning_rate": lr,
+            }
             
             if epoch % 100 == 0:
                 print(f"Epoch {epoch}/{epochs} - Loss: {loss_val:.6f} - Accuracy: {acc_val:.3f} - Learning Rate: {lr:.4f}")
+    
                 
     # ---------------------------------------------- save model --------------------------------------------- #
     def save_model(self, filename: str, mode_id: int,

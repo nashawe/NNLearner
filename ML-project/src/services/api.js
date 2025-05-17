@@ -1,5 +1,6 @@
 /* ---------- src/services/api.js ---------- */
 const BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const API_URL = "http://127.0.0.1:8000";
 
 /* lil helper */
 async function req(path, opts = {}) {
@@ -20,8 +21,8 @@ export const predict = (body) =>
 
 export const listModels = () => req("/models");
 
-export function subTrainStatus(onMsg) {
-  const ws = new WebSocket(`${BASE.replace(/^http/, "ws")}/ws/train-status`);
-  ws.onmessage = (e) => onMsg(JSON.parse(e.data));
-  return () => ws.close(); // caller can unsubscribe
+export async function fetchTrainingHistory(trainingId) {
+  const res = await fetch(`${API_URL}/training-history/${trainingId}`);
+  if (!res.ok) throw new Error("failed to fetch history");
+  return res.json();
 }

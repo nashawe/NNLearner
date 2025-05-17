@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./mainpage/HomePage";
 import ArchitecturePage from "./buildpages/ArchitecturePage";
-import TrainPlaceholder from "./trainpage/trainplaceholder";
+import TrainPage from "./trainpage/TrainPage";
 
 function App() {
   return (
@@ -11,7 +11,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/build" element={<ArchitecturePage />} />
-          <Route path="/train" element={<TrainPlaceholder />} />
+          <Route path="/train" element={<TrainPage />} />
           {/* Add more routes as needed */}
         </Routes>
       </div>

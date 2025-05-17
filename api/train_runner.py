@@ -135,7 +135,8 @@ def run_training_from_api(
         "mode":           mode_id,
         "output_size":    output_size,
         "loss_history":   getattr(network, "loss_history", []),
-        "accuracy_history": getattr(network, "accuracy_history", []),
+        "acc_history": getattr(network, "acc_history", []),
+        "lr_history": getattr(network, "lr_history", []),
         **getattr(network, "final_metrics", {}),
     }
 

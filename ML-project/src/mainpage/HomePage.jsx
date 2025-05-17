@@ -8,7 +8,7 @@ import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Blocks, Rocket, Paperclip, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import PraxisLogo from "../assets/praxis-logo.svg";
+import NNLogo from "../assets/NNLogo.png";
 
 function Navbar() {
   const [sticky, setSticky] = useState(false);
@@ -43,8 +43,8 @@ function Navbar() {
         }`}
       >
         <motion.img
-          src={PraxisLogo}
-          alt="Praxis Logo"
+          src={NNLogo}
+          alt="Logo"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
