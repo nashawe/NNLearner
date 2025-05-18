@@ -1,4 +1,4 @@
-/* ───────── src/pages/SettingsPage.jsx ─────────
+/* ───────── src/build/SettingsPage.jsx ─────────
    fixes:
    • dropped custom thumb overlay → plain sliders
    • Dropout toggle no longer inflates

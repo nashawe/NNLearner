@@ -16,7 +16,7 @@ function Navbar() {
   const [triggerY, setTriggerY] = useState(0);
   const iconList = [
     { icon: Blocks, label: "Build", path: "/build" },
-    { icon: Rocket, label: "Train", path: "/train" },
+    { icon: Rocket, label: "Explore", path: "/explore" },
     { icon: Paperclip, label: "Learn", path: "/learn" },
   ];
   const SCROLL_BUFFER = 20;

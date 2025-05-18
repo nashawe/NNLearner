@@ -18,11 +18,12 @@ export default function TrainPage() {
   const paramsRef = useRef(null);
 
   // ────────────────────────────────────────────────────────────────────────────────
+  const hasTrained = useRef(false);
+
   useEffect(() => {
-    if (!trainingParams) {
-      alert("No training parameters found.");
-      return;
-    }
+    if (!trainingParams || hasTrained.current) return;
+    hasTrained.current = true;
+
     async function runTraining() {
       try {
         const res = await trainModel(trainingParams);
@@ -33,7 +34,7 @@ export default function TrainPage() {
       }
     }
     runTraining();
-  }, []);
+  }, [trainingParams]);
 
   /* helpers */
   const SectionBtn = ({ label, onClick }) => (

@@ -1,8 +1,8 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import HomePage from "./mainpage/HomePage";
-import ArchitecturePage from "./buildpages/ArchitecturePage";
-import TrainPage from "./trainpage/TrainPage";
+import HomePage from "./main/HomePage";
+import ArchitecturePage from "./build/ArchitecturePage";
+import Explore from "./explore/Explore";
 
 function App() {
   return (
@@ -11,7 +11,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/build" element={<ArchitecturePage />} />
-          <Route path="/train" element={<TrainPage />} />
+          <Route path="/explore" element={<Explore />} />
           {/* Add more routes as needed */}
         </Routes>
       </div>

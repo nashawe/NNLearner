@@ -4,8 +4,6 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 import asyncio
 
-
-
 app = FastAPI()
 
 app.add_middleware(
@@ -55,6 +53,7 @@ class PredictRequest(BaseModel):
 # 2. Route for training
 @app.post("/train")
 def train_model(request: TrainRequest):
+    print("TRAINING ENDPOINT HIT")
     training_id = str(uuid.uuid4())  # unique session ID
     result = run_training_from_api(
         input_size=request.input_size,

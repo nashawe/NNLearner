@@ -19,7 +19,9 @@ export default function SeparateHistoryCharts({
   learning_rate,
 }) {
   const [active, setActive] = useState(null);
-  const [linear, setLinear] = useState(false);
+
+  // Toggle between linear and log scale if you need it later
+  // (removed for clarity; re‑add as required)
 
   const baseData = loss.map((v, i) => ({
     epoch: i + 1,
@@ -32,29 +34,38 @@ export default function SeparateHistoryCharts({
     {
       key: "loss",
       title: "Loss",
-      data: baseData,
       dataKey: "loss",
-      step: 100,
       yLabel: "Loss",
-      extra: <div className="flex items-center space-x-2"></div>,
     },
     {
       key: "accuracy",
       title: "Accuracy",
-      data: baseData,
       dataKey: "accuracy",
       yLabel: "%",
-      extra: null,
     },
     {
       key: "lr",
       title: "Learning Rate",
-      data: baseData,
       dataKey: "lr",
       yLabel: "LR",
-      extra: null,
     },
   ];
+
+  const commonLineChartProps = {
+    margin: { top: 20, right: 30, left: 20, bottom: 30 }, // bottom margin prevents Brush ↔ axis‑label overlap
+  };
+
+  // Shared black‑and‑white styling helpers
+  const axisStyle = {
+    stroke: "#000",
+    tick: { fill: "#000" },
+  };
+
+  const tooltipStyle = {
+    contentStyle: { backgroundColor: "#fff", borderColor: "#000" },
+    labelStyle: { color: "#000" },
+    itemStyle: { color: "#000" },
+  };
 
   return (
     <div className="flex flex-col space-y-8 p-8">
@@ -64,21 +75,23 @@ export default function SeparateHistoryCharts({
           className="relative bg-white rounded-2xl shadow-2xl p-6 hover:shadow-3xl transition cursor-pointer"
         >
           <div className="absolute top-4 right-4 flex space-x-2">
-            {c.extra}
             <button onClick={() => setActive(c.key)}>
               <Maximize2 className="w-6 h-6 text-gray-600 hover:text-gray-900 transition" />
             </button>
           </div>
-          <h3 className="text-2xl font-bold mb-4">{c.title} vs Epoch</h3>
+
+          <h3 className="text-2xl font-bold mb-4">{`${c.title} vs Epoch`}</h3>
+
           <div className="w-full h-96">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={c.data}>
+              <LineChart data={baseData} {...commonLineChartProps}>
                 <CartesianGrid stroke="#000" strokeDasharray="3 3" />
+
                 <XAxis
+                  {...axisStyle}
                   dataKey="epoch"
-                  stroke="#000"
                   ticks={baseData
-                    .filter((d, i) => d.epoch % 25 === 0)
+                    .filter((d) => d.epoch % 25 === 0)
                     .map((d) => d.epoch)}
                   label={{
                     value: "Epoch",
@@ -86,16 +99,14 @@ export default function SeparateHistoryCharts({
                     offset: -5,
                     fill: "#000",
                   }}
-                  tick={{ fill: "#000" }}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
                 />
+
                 <YAxis
+                  {...axisStyle}
                   domain={["auto", "auto"]}
-                  stroke="#000"
-                  tick={{ fill: "#000" }}
                   tickFormatter={
                     c.key === "accuracy"
-                      ? (v) => (v * 100).toFixed(0) + "%"
+                      ? (v) => `${(v * 100).toFixed(0)}%`
                       : undefined
                   }
                   label={{
@@ -105,17 +116,14 @@ export default function SeparateHistoryCharts({
                     fill: "#000",
                   }}
                 />
+
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#fff",
-                    borderColor: "#000",
-                  }}
-                  labelStyle={{ color: "#000" }}
-                  itemStyle={{ color: "#000" }}
+                  {...tooltipStyle}
                   formatter={(v) =>
-                    c.key === "accuracy" ? (v * 100).toFixed(2) + "%" : v
+                    c.key === "accuracy" ? `${(v * 100).toFixed(2)}%` : v
                   }
                 />
+
                 <Line
                   type="monotone"
                   dataKey={c.dataKey}
@@ -123,6 +131,7 @@ export default function SeparateHistoryCharts({
                   strokeWidth={2}
                   dot={false}
                 />
+
                 <Brush
                   dataKey="epoch"
                   height={30}
@@ -132,6 +141,8 @@ export default function SeparateHistoryCharts({
               </LineChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Full‑screen modal */}
           <AnimatePresence>
             {active === c.key && (
               <motion.div
@@ -154,42 +165,67 @@ export default function SeparateHistoryCharts({
                   >
                     <X className="w-6 h-6 text-gray-600 hover:text-gray-900 transition" />
                   </button>
-                  <h3 className="text-3xl font-bold mb-6 text-center">
-                    {c.title} vs Epoch
-                  </h3>
+
+                  <h3 className="text-3xl font-bold mb-6 text-center">{`${c.title} vs Epoch`}</h3>
+
                   <div className="w-full h-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={c.data}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="epoch" />
+                      <LineChart data={baseData} {...commonLineChartProps}>
+                        <CartesianGrid stroke="#000" strokeDasharray="3 3" />
+
+                        <XAxis
+                          {...axisStyle}
+                          dataKey="epoch"
+                          ticks={baseData
+                            .filter((d) => d.epoch % 25 === 0)
+                            .map((d) => d.epoch)}
+                          label={{
+                            value: "Epoch",
+                            position: "insideBottomRight",
+                            offset: -5,
+                            fill: "#000",
+                          }}
+                        />
+
                         <YAxis
+                          {...axisStyle}
                           domain={["auto", "auto"]}
                           tickFormatter={
                             c.key === "accuracy"
-                              ? (v) => (v * 100).toFixed(0) + "%"
+                              ? (v) => `${(v * 100).toFixed(0)}%`
                               : undefined
                           }
                           label={{
                             value: c.yLabel,
                             angle: -90,
                             position: "insideLeft",
+                            fill: "#000",
                           }}
                         />
+
                         <Tooltip
+                          {...tooltipStyle}
                           formatter={(v) =>
                             c.key === "accuracy"
-                              ? (v * 100).toFixed(2) + "%"
+                              ? `${(v * 100).toFixed(2)}%`
                               : v
                           }
                         />
+
                         <Line
                           type="monotone"
                           dataKey={c.dataKey}
-                          stroke="#4f46e5"
+                          stroke="#000"
                           strokeWidth={2}
                           dot={false}
                         />
-                        <Brush dataKey="epoch" height={40} stroke="#4f46e5" />
+
+                        <Brush
+                          dataKey="epoch"
+                          height={40}
+                          stroke="#000"
+                          travellerStroke="#000"
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
