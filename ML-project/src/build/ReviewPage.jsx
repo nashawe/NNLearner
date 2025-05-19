@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeftCircle, Rocket } from "lucide-react";
-import { trainModel, fetchTrainingHistory } from "../services/api";
 import { useNavigate } from "react-router-dom";
 
 export default function ReviewPage({

@@ -4,6 +4,7 @@ import HomePage from "./main/HomePage";
 import ArchitecturePage from "./build/ArchitecturePage";
 import TrainPage from "./train/TrainPage";
 import Explore from "./explore/Explore";
+import LearnPage from "./learn/LearnPage";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="/train" element={<TrainPage />} />
           <Route path="/build" element={<ArchitecturePage />} />
           <Route path="/explore" element={<Explore />} />
+          <Route path="/learn" element={<LearnPage />} />
           {/* Add more routes as needed */}
         </Routes>
       </div>
