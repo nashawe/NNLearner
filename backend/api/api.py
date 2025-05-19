@@ -50,11 +50,10 @@ class PredictRequest(BaseModel):
     model_path: str
     test_data: List[List[float]]
 
-# 2. Route for training
 @app.post("/train")
 def train_model(request: TrainRequest):
     print("TRAINING ENDPOINT HIT")
-    training_id = str(uuid.uuid4())  # unique session ID
+
     result = run_training_from_api(
         input_size=request.input_size,
         output_size=request.output_size,
@@ -73,20 +72,18 @@ def train_model(request: TrainRequest):
         filename=request.filename,
         use_scheduler=request.use_scheduler,
     )
-    training_history_store[training_id] = {
-        "loss":           result["loss_history"],
-        "accuracy":       result["acc_history"],
-        "learning_rate":  result["lr_history"],   # <— add this key
+
+    return {
+        "loss": result["loss_history"],
+        "accuracy": result["acc_history"],
+        "learning_rate": result["lr_history"],
         "final_metrics": {
-            "loss":        result["loss_history"][-1],
-            "accuracy":    result["acc_history"][-1],
+            "loss": result["loss_history"][-1],
+            "accuracy": result["acc_history"][-1],
             "learning_rate": result["lr_history"][-1],
         }
     }
-    return {
-        "training_id": training_id,
-        **result
-    }
+
     
 # 3. Route for training dashboard
 @app.get("/training-history/{training_id}")
@@ -122,11 +119,6 @@ def list_saved_models():
         return {"models": model_files}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not list models: {str(e)}")
-
-@app.get("/history")
-def get_history():
-    return {"msg": "not implemented yet"}
-
 
 @app.exception_handler(Exception)
 async def handle_general_error(request: Request, exc: Exception):

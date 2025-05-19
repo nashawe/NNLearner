@@ -1,7 +1,6 @@
 // src/pages/TrainPage.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { trainModel, fetchTrainingHistory } from "../services/api";
 import SeparateHistoryCharts from "../components/SeparateHistoryCharts";
 import { ArrowLeft, Home, Settings } from "lucide-react";
 import { motion } from "framer-motion";
@@ -25,8 +24,11 @@ export default function TrainPage() {
     setHistory(null);
     try {
       const res = await trainModel(trainingParams);
-      const hist = await fetchTrainingHistory(res.training_id);
-      setHistory(hist);
+      setHistory({
+        loss: res.loss,
+        accuracy: res.accuracy,
+        learning_rate: res.learning_rate,
+      });
     } catch (err) {
       setError(err.message);
     }
