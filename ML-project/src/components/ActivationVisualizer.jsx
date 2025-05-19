@@ -34,7 +34,7 @@ function activate(name, x) {
     case "ReLU":
       return Math.max(0, x);
     case "Leaky ReLU":
-      return x >= 0 ? x : 0.01 * x;
+      return x >= 0 ? x : 0.1 * x;
     case "GELU":
       return 0.5 * x * (1 + erf(x / Math.SQRT2));
     default:
@@ -53,7 +53,7 @@ function derivative(name, x) {
     case "ReLU":
       return x > 0 ? 1 : 0;
     case "Leaky ReLU":
-      return x > 0 ? 1 : 0.01;
+      return x > 0 ? 1 : 0.1;
     case "GELU": {
       // derivative of GELU (approximation)
       const c = 0.5 * (1 + erf(x / Math.SQRT2));
@@ -126,6 +126,8 @@ export default function ActivationVisualizer() {
           y: {
             ticks: { display: true, color: "#FFFFFF" },
             grid: { display: true, color: "#444444" },
+            suggestedMin: -1,
+            suggestedMax: 6,
           },
         },
         elements: {
