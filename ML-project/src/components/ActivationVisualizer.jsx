@@ -110,29 +110,28 @@ export default function ActivationVisualizer() {
             : []),
         ],
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            labels: { color: "#FFFFFF" },
-          },
+      scales: {
+        x: {
+          ticks: { display: true, color: "#FFFFFF" },
+          grid: { display: true, color: "#444444" },
         },
-        scales: {
-          x: {
-            ticks: { display: true, color: "#FFFFFF" },
-            grid: { display: true, color: "#444444" },
-          },
-          y: {
-            ticks: { display: true, color: "#FFFFFF" },
-            grid: { display: true, color: "#444444" },
-            suggestedMin: -1,
-            suggestedMax: 6,
-          },
+        y: {
+          ticks: { display: true, color: "#FFFFFF" },
+          grid: { display: true, color: "#444444" },
+          suggestedMin:
+            selected === "Leaky ReLU" ? -1 : selected === "Tanh" ? -1.2 : 0,
+          suggestedMax:
+            selected === "Sigmoid"
+              ? 1.2
+              : selected === "Tanh"
+              ? 1.2
+              : selected === "Leaky ReLU"
+              ? 6
+              : undefined,
         },
-        elements: {
-          line: { tension: 0.4 }, // global smoothness
-        },
+      },
+      elements: {
+        line: { tension: 0.4 }, // global smoothness
       },
     };
   }, [selected, showDeriv, xs]);
