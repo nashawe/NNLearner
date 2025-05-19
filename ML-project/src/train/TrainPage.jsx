@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import SeparateHistoryCharts from "../components/SeparateHistoryCharts";
 import { ArrowLeft, Home, Settings } from "lucide-react";
 import { motion } from "framer-motion";
+import { trainModel } from "../services/api";
 
 export default function TrainPage() {
   const { state } = useLocation();
