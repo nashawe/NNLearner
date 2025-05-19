@@ -123,6 +123,11 @@ def list_saved_models():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not list models: {str(e)}")
 
+@app.get("/history")
+def get_history():
+    return {"msg": "not implemented yet"}
+
+
 @app.exception_handler(Exception)
 async def handle_general_error(request: Request, exc: Exception):
     print("❌ Backend error:", repr(exc))
