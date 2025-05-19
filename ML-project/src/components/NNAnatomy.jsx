@@ -130,14 +130,23 @@ export default function NNAnatomy() {
   }));
 
   return (
-    <section id="anatomy" className="bg-white py-20 px-6">
+    <section id="anatomy" className="bg-gray-900 py-20 px-6">
       <div className="max-w-5xl mx-auto text-center">
-        <h2 className="text-3xl font-semibold text-gray-900 mb-8">
+        <h2 className="text-3xl font-semibold text-white mb-8">
           Neural Network Anatomy
         </h2>
 
         <div className="h-[500px] border rounded-xl relative">
-          <ReactFlow nodes={nodes} edges={edges} fitView nodesDraggable={false}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            fitView
+            nodesDraggable={false}
+            zoomOnScroll={false}
+            zoomOnPinch={false}
+            panOnScroll={false}
+            zoomActivationKeyCode={null}
+          >
             <Background gap={20} size={1} />
             <Controls />
           </ReactFlow>
@@ -165,7 +174,7 @@ export default function NNAnatomy() {
 
         <button
           onClick={runForward}
-          className="mt-8 px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+          className="mt-8 px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
         >
           Run Forward Pass
         </button>

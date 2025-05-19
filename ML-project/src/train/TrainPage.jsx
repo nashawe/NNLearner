@@ -20,19 +20,21 @@ export default function TrainPage() {
   // ────────────────────────────────────────────────────────────────────────────────
   const hasTrained = useRef(false);
 
+  const runTraining = async () => {
+    setError(null);
+    setHistory(null);
+    try {
+      const res = await trainModel(trainingParams);
+      const hist = await fetchTrainingHistory(res.training_id);
+      setHistory(hist);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   useEffect(() => {
     if (!trainingParams || hasTrained.current) return;
     hasTrained.current = true;
-
-    async function runTraining() {
-      try {
-        const res = await trainModel(trainingParams);
-        const hist = await fetchTrainingHistory(res.training_id);
-        setHistory(hist);
-      } catch (err) {
-        setError(err.message);
-      }
-    }
     runTraining();
   }, [trainingParams]);
 
@@ -127,9 +129,15 @@ export default function TrainPage() {
 
           {!history && !error && (
             <motion.div
-              className="text-center py-20 text-gray-600"
+              className="text-center py-6 text-gray-900 text-2xl font-semibold bg-white rounded-3xl shadow-lg max-w-2xl mx-auto"
               initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              animate={{
+                opacity: [1, 0.2, 1],
+              }}
+              transition={{
+                duration: 1.4,
+                repeat: Infinity,
+              }}
             >
               Training&nbsp;in&nbsp;progress…
             </motion.div>
@@ -141,6 +149,12 @@ export default function TrainPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
             >
+              <SectionBtn
+                label="Rerun"
+                onClick={runTraining}
+                className="text-center"
+              />
+
               <SeparateHistoryCharts
                 loss={history.loss}
                 accuracy={history.accuracy}

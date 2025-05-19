@@ -1,116 +1,167 @@
 "use client";
-import React from "react";
+import React, { useRef, useEffect, useState } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-const architectures = [
+gsap.registerPlugin(ScrollTrigger);
+
+const archItems = [
   {
     name: "LeNet",
-    sub: "1989 – Yann LeCun",
+    sub: "1989 - Yann LeCun",
     description:
-      "Pioneering convolutional network that proved back-prop works for visual tasks. Designed for handwritten digit recognition and set early benchmarks.",
+      "LeNet was one of the first successful neural networks for image recognition. It was designed to read handwritten digits, like those on checks. It introduced key ideas like convolutional layers and pooling, which are now common in modern image models. LeNet showed that machines could learn to understand images through structured layers of processing.",
   },
   {
     name: "AlexNet",
-    sub: "2012 – Alex Krizhevsky, Ilya Sutskever, Geoffrey Hinton",
+    sub: "2012 - Krizhevsky, Sutskever & Hinton",
     description:
-      "Deep CNN that won ImageNet 2012 by a huge margin. Popularized ReLU, dropout, and GPU training, igniting the deep-learning boom.",
+      "AlexNet marked a major turning point in deep learning. It won a major image classification competition in 2012 by a wide margin, proving that deep neural networks could outperform traditional methods. It introduced useful techniques like ReLU (a new type of activation function), dropout (to prevent overfitting), and GPU-based training, which made it much faster. This model helped bring deep learning into the mainstream.",
   },
   {
     name: "VGG",
-    sub: "2014 – Karen Simonyan & Andrew Zisserman",
+    sub: "2014 - Simonyan & Zisserman",
     description:
-      "Very deep CNN using small 3×3 filters. Showed that depth with uniform blocks improves performance and became a classic backbone.",
+      "VGG made the architecture of convolutional networks simpler and more consistent by using only small (3x3) filters stacked in a regular pattern. This showed that making networks deeper could improve accuracy, even with a very straightforward design. However, the model is quite large and slow, so it’s mostly used today as a baseline or feature extractor.",
   },
   {
     name: "ResNet",
-    sub: "2015 – Kaiming He et al.",
+    sub: "2015 - Kaiming He et al.",
     description:
-      "Introduced residual connections enabling 100+-layer networks. Won ImageNet 2015 and reshaped deep network design across domains.",
+      "ResNet solved a big problem with deep networks: the more layers you add, the harder it gets to train them properly. ResNet introduced shortcut connections that let information skip over some layers. This made it possible to train much deeper models—over 100 layers—and still get great results. It became a standard for image tasks and influenced many later models.",
   },
   {
     name: "Transformer",
-    sub: "2017 – Vaswani et al.",
+    sub: "2017 - Vaswani et al.",
     description:
-      "Sequence-to-sequence model relying solely on attention. Replaced RNNs in NLP and now powers state-of-the-art language and vision models.",
+      "The Transformer architecture changed how models handle sequences, like text or time-series data. Instead of processing input step-by-step, it looks at all parts of the input at once and figures out what’s important using a mechanism called attention. This allowed much faster training and better results on large datasets. Transformers are now the backbone of most advanced language and vision models, including ChatGPT.",
   },
   {
     name: "GAN",
-    sub: "2014 – Ian Goodfellow et al.",
+    sub: "2014 - Goodfellow et al.",
     description:
-      "Adversarial framework with generator and discriminator in competition. Enabled realistic image synthesis and sparked generative AI research.",
+      "GANs, or Generative Adversarial Networks, are made of two competing models: a generator that tries to make fake data, and a discriminator that tries to detect whether data is real or fake. As they train together, the generator gets better at producing realistic outputs, like images or music. GANs opened the door to creative AI applications, like face generation, art, and image editing.",
   },
 ];
 
 export default function ArchitectureGallery() {
+  const sectionRef = useRef(null);
+  const cardsRef = useRef([]);
+  const tocRefs = useRef([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      ScrollTrigger.create({
+        trigger: sectionRef.current,
+        start: "top top",
+        end: "+=" + archItems.length * 100 + "%",
+        scrub: true,
+        pin: true,
+        pinSpacing: true,
+      });
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: "top top",
+          end: "+=" + archItems.length * 100 + "%",
+          scrub: true,
+          onUpdate: (self) => {
+            const progress = self.progress;
+            const offsetProgress = Math.max(
+              0,
+              progress - 1 / (archItems.length + 1)
+            );
+            const index = Math.min(
+              archItems.length - 1,
+              Math.floor(offsetProgress * archItems.length)
+            );
+
+            setActiveIndex(index);
+          },
+        },
+      });
+
+      tl.from(sectionRef.current.querySelector("h2"), {
+        opacity: 0,
+        y: 50,
+        duration: 0.7,
+        ease: "power3.out",
+      });
+
+      tl.from(
+        tocRefs.current["container"],
+        {
+          opacity: 0,
+          y: 50,
+          duration: 0.7,
+          ease: "power3.out",
+        },
+        "<"
+      );
+
+      tl.from(
+        cardsRef.current,
+        {
+          y: () => window.innerHeight / 2 + 100,
+          opacity: 0,
+          duration: 1,
+          ease: "power3.out",
+          stagger: 1,
+        },
+        "+=0.3"
+      );
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
-    <section id="architectures" className="bg-white py-20 px-6">
-      <div className="max-w-6xl mx-auto">
-        <h2 className="text-3xl font-semibold text-gray-900 mb-12 text-center">
-          Neural Network Architectures
+    <section
+      id="architectures"
+      ref={sectionRef}
+      className="bg-gray-900 min-h-screen relative overflow-hidden flex"
+    >
+      {/* Table of Contents */}
+      <div
+        ref={(el) => (tocRefs.current["container"] = el)}
+        className="absolute left-12 top-1/2 -translate-y-1/2 z-20 space-y-3"
+      >
+        {archItems.map((item, idx) => (
+          <div
+            key={item.name}
+            ref={(el) => (tocRefs.current[idx] = el)}
+            className={`text-sm font-medium transition-all duration-300 ${
+              idx === activeIndex
+                ? "text-white scale-110"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            {item.name}
+          </div>
+        ))}
+      </div>
+
+      {/* Cards */}
+      <div className="relative w-full">
+        <h2 className="absolute top-20 left-1/2 transform -translate-x-1/2 text-4xl font-bold text-white text-center">
+          Famous Neural Network Architectures
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {architectures.map((arch) => (
-            <div
-              key={arch.name}
-              className="bg-gray-100 p-6 rounded-xl shadow-md hover:shadow-xl transition"
-            >
-              <h3 className="text-xl font-bold text-gray-800">{arch.name}</h3>
-              <p className="text-sm text-gray-500 mt-1">{arch.sub}</p>
-
-              <svg
-                className="w-full h-20 mt-4"
-                viewBox="0 0 210 60"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <rect
-                  x="10"
-                  y="10"
-                  width="30"
-                  height="40"
-                  className="fill-gray-300"
-                />
-                <rect
-                  x="50"
-                  y="10"
-                  width="30"
-                  height="40"
-                  className="fill-gray-400"
-                />
-                <rect
-                  x="90"
-                  y="10"
-                  width="30"
-                  height="40"
-                  className="fill-gray-500"
-                />
-                <rect
-                  x="130"
-                  y="10"
-                  width="30"
-                  height="40"
-                  className="fill-gray-600"
-                />
-                <rect
-                  x="170"
-                  y="10"
-                  width="30"
-                  height="40"
-                  className="fill-gray-700"
-                />
-              </svg>
-
-              <p className="text-gray-700 mt-4 text-sm">{arch.description}</p>
-
-              <button
-                className="mt-6 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition"
-                onClick={() => console.log(`Explore ${arch.name}`)}
-              >
-                Explore
-              </button>
-            </div>
-          ))}
-        </div>
+        {archItems.map((item, idx) => (
+          <div
+            key={item.name}
+            ref={(el) => (cardsRef.current[idx] = el)}
+            className="absolute top-1/2 left-1/2 w-full max-w-2xl transform -translate-x-1/2 -translate-y-1/2 bg-gray-800 rounded-2xl shadow-lg p-8"
+          >
+            <h3 className="text-2xl font-semibold text-white">{item.name}</h3>
+            <p className="text-sm italic text-gray-300 mt-1">{item.sub}</p>
+            <p className="mt-4 text-gray-200 leading-relaxed">
+              {item.description}
+            </p>
+          </div>
+        ))}
       </div>
     </section>
   );

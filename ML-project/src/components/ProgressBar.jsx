@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Check, Home } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const steps = [
   { label: "Architecture" },
@@ -10,9 +11,15 @@ const steps = [
 ];
 
 export default function ProgressBar({ currentStep }) {
+  const navigate = useNavigate();
+
   return (
-    <nav className="w-full flex justify-center pt-4 pb-4 border-b">
-      <div className="w-3/4 flex items-center">
+    <nav className="w-full flex items-center justify-between pt-4 pb-4 border-b">
+      {/* Progress steps */}
+      <div
+        className="flex items-center ml-8"
+        style={{ width: "calc(78% - 30px)" }}
+      >
         {steps.map((step, index) => {
           const stepNum = index + 1;
           const isActive = currentStep === stepNum;
@@ -54,6 +61,24 @@ export default function ProgressBar({ currentStep }) {
           );
         })}
       </div>
+
+      {/* Separator */}
+      <div className="h-8 border-l border-gray-300" />
+
+      {/* Home Button */}
+      <motion.div
+        className="flex items-center mr-8"
+        whileHover={{ scale: 1.15, y: -5 }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      >
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-3 px-6 py-3 bg-white text-black font-semibold rounded-2xl shadow-md hover:bg-gray-100 transition-all duration-200"
+        >
+          <Home size={24} />
+          <span className="text-md">Home</span>
+        </button>
+      </motion.div>
     </nav>
   );
 }

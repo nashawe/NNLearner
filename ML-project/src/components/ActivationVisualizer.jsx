@@ -88,9 +88,11 @@ export default function ActivationVisualizer() {
           {
             label: selected,
             data: ys,
+            borderColor: "#FFFFFF",
             borderWidth: 2,
-            tension: 0.3,
+            tension: 0.4, // smoother curves
             fill: false,
+            pointRadius: 0, // no dots
           },
           ...(showDeriv
             ? [
@@ -98,9 +100,11 @@ export default function ActivationVisualizer() {
                   label: `${selected} derivative`,
                   data: derivativeYs,
                   borderDash: [6, 6],
+                  borderColor: "#FFFFFF",
                   borderWidth: 2,
-                  tension: 0.3,
+                  tension: 0.4,
                   fill: false,
+                  pointRadius: 0,
                 },
               ]
             : []),
@@ -111,37 +115,30 @@ export default function ActivationVisualizer() {
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            labels: {
-              color: "#4B5563", // gray-700
-            },
+            labels: { color: "#FFFFFF" },
           },
         },
         scales: {
           x: {
-            ticks: {
-              color: "#6B7280", // gray-500
-            },
-            grid: {
-              color: "#E5E7EB", // gray-200
-            },
+            ticks: { display: true, color: "#FFFFFF" },
+            grid: { display: true, color: "#444444" },
           },
           y: {
-            ticks: {
-              color: "#6B7280",
-            },
-            grid: {
-              color: "#E5E7EB",
-            },
+            ticks: { display: true, color: "#FFFFFF" },
+            grid: { display: true, color: "#444444" },
           },
+        },
+        elements: {
+          line: { tension: 0.4 }, // global smoothness
         },
       },
     };
   }, [selected, showDeriv, xs]);
 
   return (
-    <section id="activations" className="bg-gray-50 py-20 px-6">
+    <section id="activations" className="bg-gray-900 pb-28 pt-4 px-6 h-screen">
       <div className="max-w-4xl mx-auto text-center">
-        <h2 className="text-3xl font-semibold text-gray-800 mb-8">
+        <h2 className="text-3xl font-semibold text-white mb-8">
           Activation Functions
         </h2>
 
@@ -151,11 +148,11 @@ export default function ActivationVisualizer() {
             <button
               key={name}
               onClick={() => setSelected(name)}
-              className={`px-4 py-2 rounded-lg transition $
-                {selected === name
-                  ? "bg-indigo-600 text-white"
-                  : "bg-indigo-100 text-indigo-800 hover:bg-indigo-200"}
-              `}
+              className={`px-4 py-2 rounded-lg transition ${
+                selected === name
+                  ? "bg-red-400 text-black"
+                  : "bg-white text-black hover:bg-red-400"
+              }`}
             >
               {name}
             </button>

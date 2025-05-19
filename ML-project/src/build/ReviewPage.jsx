@@ -216,7 +216,7 @@ export default function ReviewPage({
       <div className="w-full flex justify-center pb-16">
         <motion.button
           type="button"
-          className="relative flex items-center gap-8 bg-indigo-600 font-serif text-[100px] text-white px-20 py-10 rounded-full shadow-lg overflow-hidden"
+          className="relative flex items-center gap-8 bg-indigo-600 font-serif text-[75px] text-white px-14 py-6 rounded-full shadow-lg overflow-hidden"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleTrain}

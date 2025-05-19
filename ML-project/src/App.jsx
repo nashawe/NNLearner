@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./main/HomePage";
 import ArchitecturePage from "./build/ArchitecturePage";
+import TrainPage from "./train/TrainPage";
 import Explore from "./explore/Explore";
 
 function App() {
@@ -10,6 +11,7 @@ function App() {
       <div className="min-h-screen bg-white text-black">
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/train" element={<TrainPage />} />
           <Route path="/build" element={<ArchitecturePage />} />
           <Route path="/explore" element={<Explore />} />
           {/* Add more routes as needed */}

@@ -227,14 +227,14 @@ function FloatInput({ label, children }) {
 }
 
 export default function SettingsPage({ onBack, onContinue, onSave }) {
-  const [mode_id, setMode_id] = useState(1);
-  const [learningRate, setLearningRate] = useState(0.01);
-  const [epochs, setEpochs] = useState(1000);
-  const [batchSize, setBatchSize] = useState(1);
+  const [mode_id, setMode_id] = useState(null);
+  const [learningRate, setLearningRate] = useState(0.001);
+  const [epochs, setEpochs] = useState(null);
+  const [batchSize, setBatchSize] = useState(32);
   const [useDropout, setUseDropout] = useState(false);
-  const [dropout, setDropout] = useState(0.2);
-  const [weightInit, setWeightInit] = useState(1);
-  const [optimizer, setOptimizer] = useState(1);
+  const [dropout, setDropout] = useState(null);
+  const [weightInit, setWeightInit] = useState(null);
+  const [optimizer, setOptimizer] = useState(null);
   const [useLrScheduler, setUseLrScheduler] = useState(false);
   const [settingInfoId, setSettingInfoId] = useState(null);
 
@@ -687,8 +687,25 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
           <motion.button
             key={btn}
             onClick={() => {
-              if (btn === "Back") onBack();
-              else onContinue();
+              if (btn === "Back") {
+                onBack();
+              } else {
+                const isValid =
+                  mode_id !== null &&
+                  epochs !== null &&
+                  optimizer !== null &&
+                  weightInit !== null &&
+                  (!useDropout || (useDropout && dropout !== null));
+
+                if (!isValid) {
+                  setBadge("Please fill out all settings.");
+                  clearTimeout(window.__badgeTimer);
+                  window.__badgeTimer = setTimeout(() => setBadge(null), 1500);
+                  return;
+                }
+
+                onContinue();
+              }
             }}
             className={`relative overflow-hidden px-5 py-2 rounded-full text-sm font-semibold ${
               btn === "Back" ? "border bg-white" : "bg-gray-900 text-white"

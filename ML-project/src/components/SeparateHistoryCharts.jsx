@@ -52,7 +52,7 @@ export default function SeparateHistoryCharts({
   ];
 
   const commonLineChartProps = {
-    margin: { top: 20, right: 30, left: 20, bottom: 30 }, // bottom margin prevents Brush ↔ axis‑label overlap
+    margin: { top: 20, right: 30, left: 20, bottom: 50 }, // bottom margin prevents Brush ↔ axis‑label overlap
   };
 
   // Shared black‑and‑white styling helpers
@@ -137,6 +137,7 @@ export default function SeparateHistoryCharts({
                   height={30}
                   stroke="#000"
                   travellerStroke="#000"
+                  className="my-8"
                 />
               </LineChart>
             </ResponsiveContainer>

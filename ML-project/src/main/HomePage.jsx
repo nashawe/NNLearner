@@ -79,23 +79,6 @@ function Navbar() {
           </motion.button>
         ))}
       </motion.div>
-
-      {/* login/signup */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className={`hidden md:flex items-center gap-4 transition-opacity duration-300 ${
-          sticky ? "opacity-0 pointer-events-none" : "opacity-100"
-        }`}
-      >
-        <motion.button className="px-6 py-2 rounded-full border border-black font-semibold hover:bg-black hover:text-white transition-colors duration-300">
-          Log In
-        </motion.button>
-        <motion.button className="px-6 py-2 rounded-full border border-black font-semibold hover:bg-black hover:text-white transition-colors duration-300">
-          Sign Up
-        </motion.button>
-      </motion.div>
     </nav>
   );
 }
@@ -266,19 +249,17 @@ export default function HomePage() {
 
         <FeatureSection
           title="Train and Visualize"
-          description="Watch your models learn and evolve over time."
+          description="See how your models learn and evolve over time."
           Icon={Rocket}
           bgColor="bg-amber-600 shadow-md hover:brightness-110 transition"
           extraInfo={[
             "Choose learning rates and training epochs dynamically",
-            "Live loss and accuracy line graphs while training",
-            "View model performance and weight updates across training iterations",
-            "Compare different models and their training outcomes",
+            "Loss, learning rate, and accuracy line graphs while training",
           ]}
         />
 
         <FeatureSection
-          title="Learn with Praxis"
+          title="Learn and Explore"
           description="Explore tutorials and resources to enhance your skills."
           Icon={Paperclip}
           bgColor="bg-violet-600 text-white shadow-md hover:brightness-110 transition"
