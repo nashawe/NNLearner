@@ -4,7 +4,7 @@ import { Blocks, Waypoints, BookOpen } from "lucide-react";
 
 import MainNavbar from "../components/Layout/MainNavbar";
 import Footer from "../components/Layout/Footer";
-import HeroSection from "../components/homepage/HeroSection";
+import HeroSection from "../components/HomePage/HeroSection";
 import InfoHighlightSection from "../components/HomePage/InfoHighlightSection";
 import FeatureShowcase from "../components/HomePage/FeatureShowcase";
 import CTASection from "../components/HomePage/CTASection";
