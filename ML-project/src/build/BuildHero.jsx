@@ -12,7 +12,7 @@ import {
   Waypoints,
   CodeXml,
 } from "lucide-react";
-import MainNavbar from "../components/layout/MainNavbar";
+import MainNavbar from "../components/Layout/MainNavbar";
 
 const theme = {
   bg: "bg-slate-950",

@@ -2,7 +2,7 @@
 import React from "react";
 import { Blocks, Waypoints, BookOpen } from "lucide-react";
 
-import MainNavbar from "../components/layout/MainNavbar";
+import MainNavbar from "../components/Layout/MainNavbar";
 import Footer from "../components/Layout/Footer";
 import HeroSection from "../components/homepage/HeroSection";
 import InfoHighlightSection from "../components/HomePage/InfoHighlightSection";

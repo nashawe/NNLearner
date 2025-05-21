@@ -28,7 +28,7 @@ import {
   Blocks,
   Waypoints, // Added Blocks, Waypoints for navLinks
 } from "lucide-react";
-import MainNavbar from "../components/layout/MainNavbar";
+import MainNavbar from "../components/Layout/MainNavbar";
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
