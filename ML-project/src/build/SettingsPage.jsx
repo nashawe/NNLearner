@@ -1,171 +1,241 @@
-/* ───────── src/build/SettingsPage.jsx ─────────
-   fixes:
-   • dropped custom thumb overlay → plain sliders
-   • Dropout toggle no longer inflates
-   • batch-size dropdown sits first in General Training
-   • three-column grid so every box fits without scroll (1080 p tall)
-*/
-import React, { useState } from "react";
+// src/pages/SettingsPage.jsx
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeftCircle, ArrowRightCircle, Info } from "lucide-react";
+import {
+  ArrowLeftCircle,
+  ArrowRightCircle,
+  Info,
+  Check,
+  ChevronDown,
+  XCircle,
+  SlidersHorizontal,
+  Zap,
+  Cog,
+  Palette,
+} from "lucide-react";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
-/* ─── helpers ─── */
-const staggerKids = {
-  hidden: { opacity: 0, y: 30 },
-  show: (i) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.07, type: "spring", stiffness: 220 },
-  }),
-};
-const rippleAnim = {
-  initial: { scale: 0, opacity: 0.35 },
-  animate: {
-    scale: 3,
-    opacity: 0,
-    transition: { duration: 0.6, ease: "easeOut" },
-  },
-};
-
-const settingDescriptions = {
-  LearningRateScheduler: [
-    "Adjusts learning rate during training.",
-    "Starts high, then lowers it over time.",
-    "Helps model learn faster at first, then fine-tune.",
-    "Good for complex models or large datasets.",
-    "Can help avoid overshooting the best weights.",
-  ],
-  learningRate: [
-    "Controls how big each training step is.",
-    "Too high? Model might overshoot.",
-    "Too low? Training is super slow.",
-    "Try values like 0.01 or 0.001.",
-  ],
-  dropout: [
-    "Temporarily 'drops' random neurons during training.",
-    "Prevents overfitting by forcing robustness.",
-    "Only applies during training, not predicting after the model is trained.",
-    "If your data set is small, this will help prevent the model from just memorizing the training data.",
-  ],
-  weightInit: [
-    "How your network starts its weights.",
-    "Better init = faster and more stable training.",
-    "Surprisingly, this setting impacts training quality a lot.",
-    "Xavier works well for sigmoid/tanh, He is better for ReLU.",
-    "Random usually does NOT work well and is mostly there for testing and seeing the difference between weight inits.",
-  ],
-  optimizer: [
-    "Controls how weights update during training.",
-    "SGD is simple, Adam is smarter with momentum + adaptive steps.",
-    "Adam works great for most tasks.",
-  ],
-  batchSize: [
-    "How many samples are processed before the model updates its weights.",
-    "Smaller = slower training but more precise updates (can help generalization).",
-    "Larger = faster training but may converge to worse minima or overfit.",
-    "Common values: 16, 32, 64 — balance speed, stability, and memory usage.",
-    "Also affects how smooth or noisy the loss curve is.",
-  ],
-};
-
-function InfoButton({ onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className="ml-1 bg-transparent rounded-full hover:bg-gray-300"
-    >
-      <Info size={18} />
-    </button>
-  );
+if (!ScrollTrigger.isRegistered) {
+  gsap.registerPlugin(ScrollTrigger);
 }
 
-const modeDescriptions = {
-  1: [
-    "Mainly for educational purposes because of simplicity.",
-    "Uses sigmoid to squish values into a 0-1 range.",
-    "Not ideal for deep nets — can get slow or stuck learning.",
-    "Is usually quite slow, but it is a good example of the most basic model mode.",
-    "Best for: teaching basic neural nets or visualizing how backprop works step-by-step.",
-  ],
-  2: [
-    "Uses sigmoid + Binary Cross-Entropy for better yes/no probability learning.",
-    "Better at handling uncertainty than MSE.",
-    "Perfect for any binary question (eg. cat vs. not a cat).",
-    "BCE is a bit more complicated than MSE, but way more stable for binary tasks.",
-    "Best for: clean binary classification datasets like moons, spam detection, or medical diagnosis (yes/no).",
-  ],
-  3: [
-    "Tanh gives outputs from -1 to 1 instead of 0-1 (unlike sigmoid).",
-    "Still uses MSE to measure loss.",
-    "Good if your data has negative values or you want symmetric activation.",
-    "Works for stuff that require direction.",
-    "One example is automated driving: if output is negative, car will turn left. If positive, it will turn right.",
-    "Best for: tasks where outputs have natural directionality, like steering, movement control, or joystick prediction.",
-  ],
-  4: [
-    "ReLU in hidden layers speeds up learning and avoids small gradients.",
-    "Ends with sigmoid + BCE, so outputs are clear probabilities.",
-    "Watch out: ReLUs can die if the learning rate's too high.",
-    "Great for deeper and non-linear binary classifiers.",
-    "Best for: modern binary classifiers with complex data — like image classification (dog vs. not dog), sentiment analysis, etc.",
-  ],
-  5: [
-    "This is specifically for multi-class classification.",
-    "ReLU hidden layers + Softmax output for multi-class percentages.",
-    "Cross-Entropy loss pairs perfectly with softmax.",
-    "Use when you've got more than two choices (digits 0-9, categories, etc.).",
-    "Industry standard for most classification problems.",
-    "Best for: MNIST digit recognition, language models, facial expression classification, etc.",
-  ],
+// --- Theme ---
+const theme = {
+  bg: "bg-slate-950",
+  surface: "bg-slate-900",
+  card: "bg-slate-800", // Default card background
+  cardAlt: "bg-slate-800/70 backdrop-blur-sm", // Alternative with glassmorphism
+  inputBg: "bg-slate-700/80",
+  inputBorder: "border-slate-600/80",
+  inputFocusBorder: "focus:border-sky-400",
+  textPrimary: "text-slate-50",
+  textSecondary: "text-slate-300",
+  textMuted: "text-slate-400",
+  accent: "sky",
+  accentSecondary: "emerald", // For "ON" states and completed things
+  accentTertiary: "rose", // Another accent
+  divider: "border-slate-700",
 };
 
-/* plain slider */
-const BasicSlider = ({ value, setValue, min, max, step }) => (
-  <input
-    type="range"
-    min={min}
-    max={max}
-    step={step}
-    value={value}
-    onChange={(e) => setValue(parseFloat(e.target.value))}
-    className="w-full accent-orange-500"
-  />
+// --- Reusable AnimatedTextLine (for section titles) ---
+const AnimatedTextLine = ({ text, className }) => {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    if (ref.current) {
+      gsap.fromTo(
+        ref.current,
+        { y: "100%", opacity: 0 },
+        {
+          y: "0%",
+          opacity: 1,
+          duration: 0.6,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: ref.current.parentElement,
+            start: "top 85%",
+            toggleActions: "play none none none",
+          },
+        }
+      );
+    }
+  }, []);
+  return (
+    <span className="block overflow-hidden">
+      <span ref={ref} className={`inline-block ${className}`}>
+        {text}
+      </span>
+    </span>
+  );
+};
+
+// --- Helper Components (Dark Theme Adapted & Enhanced) ---
+const StaggeredChild = ({ children, customDelay = 0, className = "" }) => (
+  <motion.div
+    className={className}
+    variants={{
+      hidden: { opacity: 0, y: 30, filter: "blur(3px)" },
+      show: {
+        opacity: 1,
+        y: 0,
+        filter: "blur(0px)",
+        transition: {
+          delay: customDelay,
+          type: "spring",
+          stiffness: 220,
+          damping: 22,
+        },
+      },
+    }}
+  >
+    {children}
+  </motion.div>
 );
 
-/* fly-in select */
-function FlySelect({ options, value, onChange }) {
-  const [open, setOpen] = useState(false);
+const InfoButton = ({ onClick, className = "" }) => (
+  <motion.button
+    type="button"
+    onClick={onClick}
+    className={`p-1.5 rounded-full text-slate-500 hover:text-${theme.accent}-400 hover:bg-slate-700/50 transition-colors ${className}`}
+    whileHover={{ scale: 1.15, rotate: 10 }}
+    whileTap={{ scale: 0.9 }}
+    title="More Information"
+  >
+    <Info size={16} />
+  </motion.button>
+);
+
+const DarkFloatInput = ({
+  label,
+  children,
+  id,
+  value,
+  wrapperClassName = "",
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const hasValue =
+    value !== undefined && value !== null && String(value).trim() !== "";
+
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full px-3 py-2 border rounded flex justify-between items-center bg-white"
+    <div className={`relative flex flex-col ${wrapperClassName}`}>
+      <motion.label
+        htmlFor={id}
+        animate={isFocused || hasValue ? "active" : "inactive"}
+        variants={{
+          inactive: { y: 0, scale: 1, color: "rgb(100 116 139)" }, // slate-400
+          active: {
+            y: -20,
+            scale: 0.85,
+            color: `rgb(var(--color-${theme.accent}-rgb, 14 165 233))`,
+          },
+        }}
+        transition={{
+          type: "spring",
+          stiffness: 300,
+          damping: 20,
+          duration: 0.1,
+        }}
+        className="absolute left-3 top-3 text-sm pointer-events-none origin-left z-10 bg-transparent px-0.5" // Ensure bg matches input for clean overlap
       >
-        {value}
-        <span className="text-xs">&#9662;</span>
+        {label}
+      </motion.label>
+      {React.cloneElement(children, {
+        onFocus: () => setIsFocused(true),
+        onBlur: () => setIsFocused(false),
+        id: id,
+        className: `${children.props.className} pt-4`, // Add padding-top to input
+      })}
+    </div>
+  );
+};
+
+const DarkFlySelect = ({
+  options,
+  value,
+  onChange,
+  label,
+  id,
+  disabled,
+  infoClick,
+}) => {
+  const [open, setOpen] = useState(false);
+  const selectedOption = options.find((opt) => opt.value === value);
+  const displayLabel = selectedOption?.label || label || "Select...";
+
+  return (
+    <div
+      className={`relative w-full group ${
+        disabled ? "opacity-60 cursor-not-allowed" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <span className={`text-xs font-medium ${theme.textMuted}`}>
+          {label}
+        </span>
+        {infoClick && <InfoButton onClick={infoClick} />}
+      </div>
+      <button
+        type="button"
+        id={id}
+        onClick={() => !disabled && setOpen(!open)}
+        disabled={disabled}
+        className={`w-full px-3.5 py-3 text-left border rounded-lg ${
+          theme.inputBg
+        } ${theme.inputBorder} ${theme.textPrimary} 
+                    hover:border-${theme.accent}-500/70 focus:${
+          theme.inputFocusBorder
+        } focus:ring-1 focus:ring-${theme.accent}-500 
+                    outline-none transition-all duration-200 text-sm flex justify-between items-center ${
+                      disabled ? "" : "cursor-pointer"
+                    }`}
+      >
+        <span
+          className={
+            value !== null && value !== undefined
+              ? theme.textPrimary
+              : theme.textMuted
+          }
+        >
+          {selectedOption?.label || "Select..."}
+        </span>
+        <ChevronDown
+          size={18}
+          className={`text-slate-400 transition-transform duration-200 ${
+            open ? "rotate-180" : ""
+          }`}
+        />
       </button>
       <AnimatePresence>
-        {open && (
+        {open && !disabled && (
           <motion.ul
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 260, damping: 22 }}
-            className="absolute z-20 mt-1 w-full bg-white border rounded shadow"
+            initial={{ opacity: 0, y: -10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 5, scale: 1 }} // y:5 for slight overlap reveal
+            exit={{ opacity: 0, y: -10, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 350, damping: 25 }}
+            className={`absolute z-30 mt-1 w-full ${theme.surface} border ${theme.inputBorder} rounded-lg shadow-2xl 
+                        overflow-hidden max-h-56 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600`}
           >
             {options.map((opt) => (
               <motion.li
-                key={opt}
+                key={opt.value}
                 onClick={() => {
-                  onChange(opt);
+                  onChange(opt.value);
                   setOpen(false);
                 }}
-                whileHover={{ scale: 1.03 }}
-                className={`px-3 py-2 cursor-pointer ${
-                  value === opt ? "bg-gray-200" : "hover:bg-gray-100"
-                }`}
+                className={`px-3.5 py-2.5 text-sm cursor-pointer ${
+                  theme.textSecondary
+                }
+                  ${
+                    value === opt.value
+                      ? `bg-${theme.accent}-500/25 text-${theme.accent}-300 font-medium`
+                      : `hover:bg-slate-700/60 hover:${theme.textPrimary}`
+                  }`}
+                whileHover={{
+                  backgroundColor:
+                    "rgba(var(--color-slate-rgb, 51 65 85), 0.7)",
+                }} // slate-700 with opacity
               >
-                {opt}
+                {opt.label}
               </motion.li>
             ))}
           </motion.ul>
@@ -173,117 +243,158 @@ function FlySelect({ options, value, onChange }) {
       </AnimatePresence>
     </div>
   );
-}
+};
 
-/* Dropout toggle - slim, no layout-shift */
-function GlowToggle({ enabled, setEnabled }) {
+const DarkGlowToggle = ({ enabled, setEnabled, label, infoClick }) => {
   return (
-    <div
-      onClick={() => setEnabled(!enabled)}
-      className={`relative w-12 h-6 rounded-full cursor-pointer flex items-center p-1 transition-colors ${
-        enabled ? "bg-orange-500" : "bg-gray-300"
-      }`}
-    >
-      <motion.div
-        className="w-4 h-4 bg-white rounded-full shadow"
-        animate={{ x: enabled ? 20 : 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      />
-      {enabled && (
+    <div className="flex flex-col">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className={`text-xs font-medium ${theme.textMuted}`}>
+          {label}
+        </span>
+        {infoClick && <InfoButton onClick={infoClick} />}
+      </div>
+      <div className="flex items-center gap-3">
         <motion.div
-          key="halo"
-          initial={{ opacity: 0, scale: 0.6 }}
-          animate={{ opacity: 0.3, scale: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.4 }}
-          className="absolute inset-0 rounded-full bg-orange-400"
-        />
-      )}
+          onClick={() => setEnabled(!enabled)}
+          className={`relative w-12 h-6 rounded-full cursor-pointer flex items-center p-1 transition-colors duration-300 ease-in-out
+                            ${
+                              enabled
+                                ? `bg-gradient-to-r from-${theme.accentSecondary}-500 to-${theme.accentSecondary}-600 shadow-md shadow-${theme.accentSecondary}-500/30`
+                                : `${theme.surfaceContrast} hover:bg-slate-600`
+                            }`}
+          whileTap={{ scale: 0.95 }}
+        >
+          <motion.div
+            className="w-4 h-4 bg-white rounded-full shadow-lg"
+            animate={{ x: enabled ? "1.25rem" : "0.125rem" }} // 1.25rem = 20px (w-12 - w-4 - p-1*2)
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          />
+        </motion.div>
+        <span
+          className={`text-xs font-medium ${
+            enabled ? `text-${theme.accentSecondary}-300` : theme.textMuted
+          }`}
+        >
+          {enabled ? "Enabled" : "Disabled"}
+        </span>
+      </div>
     </div>
   );
-}
+};
 
-/* floating label */
-function FloatInput({ label, children }) {
-  const [focus, setFocus] = useState(false);
-  return (
-    <div
-      onFocus={() => setFocus(true)}
-      onBlur={() => setFocus(false)}
-      className="relative flex flex-col pt-6"
-    >
-      <motion.label
-        animate={
-          focus ? { y: -10, scale: 1, color: "#000" } : { y: -5, scale: 0.85 }
-        }
-        transition={{ type: "spring", stiffness: 260, damping: 22 }}
-        className="absolute left-0 top-2 text-gray-500 pointer-events-none origin-left"
-      >
+const DarkBasicSlider = ({
+  value,
+  setValue,
+  min,
+  max,
+  step,
+  id,
+  label,
+  unit = "",
+  infoClick,
+}) => (
+  <div className="w-full">
+    <div className="flex items-center justify-between mb-1">
+      <label htmlFor={id} className={`text-xs font-medium ${theme.textMuted}`}>
         {label}
-      </motion.label>
-      {children}
+      </label>
+      {infoClick && <InfoButton onClick={infoClick} />}
     </div>
+    <input
+      type="range"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={(e) => setValue(parseFloat(e.target.value))}
+      id={id}
+      className={`w-full h-2.5 rounded-lg appearance-none cursor-pointer ${theme.surfaceContrast} outline-none
+                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 
+                        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-${theme.accent}-500 
+                        [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:hover:bg-${theme.accent}-400 transition-all duration-150
+                        [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full 
+                        [&::-moz-range-thumb]:bg-${theme.accent}-500 [&::-moz-range-thumb]:border-none
+                        [&::-moz-range-thumb]:hover:bg-${theme.accent}-400`}
+    />
+    <div className={`text-right text-xs mt-1 ${theme.textMuted}`}>
+      Value:{" "}
+      <span className={`font-semibold text-${theme.accent}-300`}>
+        {value}
+        {unit}
+      </span>
+    </div>
+  </div>
+);
+
+// Description objects (ensure keys match settingInfoId used in handleInfoClick)
+const settingDescriptions = {
+  mode: "Determines the activation functions used in the final layer and the loss function for training. Critical for matching the network to the type of problem (e.g., binary vs. multi-class classification).",
+  batchSize:
+    "Number of training samples processed before the model's weights are updated. Smaller batches offer more frequent updates but can be noisy; larger batches are faster but might generalize less well.",
+  epochs:
+    "One complete pass through the entire training dataset. More epochs give the model more chances to learn, but too many can lead to overfitting.",
+  optimizer:
+    "Algorithm used to change the attributes of the neural network such as weights and learning rate to reduce the losses. Adam is often a good default.",
+  weightInitializer:
+    "Method used to set the initial random weights of the network. Proper initialization can significantly speed up convergence and improve model performance (e.g., Xavier for Tanh/Sigmoid, He for ReLU).",
+  dropout:
+    "A regularization technique where randomly selected neurons are ignored during training for a single pass. It helps prevent overfitting by making the network more robust.",
+  learningRate:
+    "Controls how much to change the model in response to the estimated error each time the model weights are updated. Too small: slow convergence. Too large: unstable training.",
+  lrScheduler:
+    "Dynamically adjusts the learning rate during training. Common strategies include reducing the LR as training progresses (e.g., Cosine Decay) to help fine-tune the model.",
+};
+const modeDescriptions = {
+  /* ... your existing modeDescriptions ... */
+};
+
+// --- Main SettingsPage Component ---
+export default function SettingsPage({
+  onBack,
+  onContinue,
+  onSave,
+  initialSettings = {},
+}) {
+  const optimizerMap = { SGD: 1, RMSProp: 2, Adam: 3 };
+  const weightInitMap = { Random: 1, Xavier: 2, He: 3 };
+
+  const [mode_id, setMode_id] = useState(initialSettings.mode_id ?? 1);
+  const [learningRate, setLearningRate] = useState(
+    initialSettings.learningRate ?? 0.001
   );
-}
+  const [epochs, setEpochs] = useState(initialSettings.epochs ?? 100);
+  const [batchSize, setBatchSize] = useState(initialSettings.batchSize ?? 32);
+  const [useDropout, setUseDropout] = useState(
+    initialSettings.useDropout ?? false
+  );
+  const [dropout, setDropout] = useState(initialSettings.dropout ?? 0.5);
+  const [weightInit, setWeightInit] = useState(
+    initialSettings.weightInit ?? weightInitMap.Xavier
+  );
+  const [optimizer, setOptimizer] = useState(
+    initialSettings.optimizer ?? optimizerMap.Adam
+  );
+  const [useLrScheduler, setUseLrScheduler] = useState(
+    initialSettings.useLrScheduler ?? false
+  );
 
-export default function SettingsPage({ onBack, onContinue, onSave }) {
-  const [mode_id, setMode_id] = useState(null);
-  const [learningRate, setLearningRate] = useState(0.001);
-  const [epochs, setEpochs] = useState(null);
-  const [batchSize, setBatchSize] = useState(32);
-  const [useDropout, setUseDropout] = useState(false);
-  const [dropout, setDropout] = useState(null);
-  const [weightInit, setWeightInit] = useState(null);
-  const [optimizer, setOptimizer] = useState(null);
-  const [useLrScheduler, setUseLrScheduler] = useState(false);
-  const [settingInfoId, setSettingInfoId] = useState(null);
+  const [infoModalContent, setInfoModalContent] = useState(null);
 
-  const [badge, setBadge] = useState(null);
-  const showBadge = (txt) => {
-    setBadge(txt);
-    clearTimeout(window.__badgeTimer);
-    window.__badgeTimer = setTimeout(() => setBadge(null), 1200);
-  };
-
-  const [infoId, setInfoId] = useState(null);
-
-  const optimizerMap = {
-    SGD: 1,
-    RMSProp: 2,
-    Adam: 3,
-  };
-
-  const reverseMap = {
-    1: "SGD",
-    2: "RMSProp",
-    3: "Adam",
-  };
-
-  const weightInitMap = {
-    Random: 1,
-    Xavier: 2,
-    He: 3,
-  };
-
-  const reverseWeightInitMap = {
-    1: "Random",
-    2: "Xavier",
-    3: "He",
-  };
-
-  // onSave effect
-  React.useEffect(() => {
-    onSave?.({
-      mode_id,
-      learningRate,
-      epochs,
-      batchSize,
-      useDropout,
-      dropout,
-      weightInit,
-      optimizer,
-      useLrScheduler,
-    });
+  useEffect(() => {
+    if (onSave) {
+      onSave({
+        mode_id,
+        learningRate,
+        epochs,
+        batchSize,
+        useDropout,
+        dropout: useDropout ? dropout : 0,
+        weightInit,
+        optimizer,
+        useLrScheduler,
+      });
+    }
   }, [
     mode_id,
     learningRate,
@@ -293,455 +404,351 @@ export default function SettingsPage({ onBack, onContinue, onSave }) {
     dropout,
     weightInit,
     optimizer,
+    useLrScheduler,
+    onSave,
   ]);
 
+  const handleInfoClick = (settingKey) => {
+    let title, items;
+    if (settingKey === "mode_info") {
+      // Special key for general mode info button
+      const currentModeOption = modeOptions.find(
+        (opt) => opt.value === mode_id
+      );
+      title = currentModeOption
+        ? `Mode ${currentModeOption.label} Details`
+        : "Mode Details";
+      items = modeDescriptions[mode_id] || [
+        "No specific details for this mode yet.",
+      ];
+    } else if (settingDescriptions[settingKey]) {
+      title =
+        settingKey
+          .replace(/([A-Z])/g, " $1")
+          .replace(/^./, (str) => str.toUpperCase()) + " Explained";
+      items = Array.isArray(settingDescriptions[settingKey])
+        ? settingDescriptions[settingKey]
+        : [settingDescriptions[settingKey]];
+    } else {
+      title = "Information";
+      items = ["Details for this setting are not yet available."];
+    }
+    setInfoModalContent({ title, items });
+  };
+
+  const modeOptions = [
+    { value: 1, label: "1 - Sigmoid + MSE" },
+    { value: 2, label: "2 - Sigmoid + BCE" },
+    { value: 3, label: "3 - Tanh + MSE" },
+    { value: 4, label: "4 - ReLU, Sigmoid + BCE" },
+    { value: 5, label: "5 - ReLU, Softmax + Cross-Entropy" },
+  ];
+  const batchSizeOptions = [1, 16, 32, 64].map((v) => ({
+    value: v,
+    label: String(v),
+  }));
+  const optimizerOptions = Object.entries(optimizerMap).map(
+    ([label, value]) => ({ label, value })
+  );
+  const weightInitOptions = Object.entries(weightInitMap).map(
+    ([label, value]) => ({ label, value })
+  );
+
+  // Section Animation Variants
+  const pageVariants = {
+    initial: { opacity: 0, filter: "blur(5px)" },
+    animate: {
+      opacity: 1,
+      filter: "blur(0px)",
+      transition: { duration: 0.5, ease: "circOut" },
+    },
+    exit: {
+      opacity: 0,
+      filter: "blur(5px)",
+      transition: { duration: 0.3, ease: "circIn" },
+    },
+  };
+  const sectionContainerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.2 },
+    },
+  };
+
   return (
-    <motion.div className="relative w-full h-[calc(100vh-90px)] overflow-hidden bg-gray-50 text-gray-900">
-      {/* breadcrumb */}
-      <div className="flex gap-2 items-center px-6 py-3 text-sm font-medium">
-        <button
+    <motion.div
+      className={`relative w-full min-h-[calc(100vh-80px)] ${theme.bg} ${theme.textSecondary} flex flex-col scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent`}
+      variants={pageVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+    >
+      <div
+        className={`sticky top-0 ${theme.bg} bg-opacity-80 backdrop-blur-md z-20 px-6 py-3.5 border-b ${theme.divider} flex items-center justify-between shadow-sm`}
+      >
+        <motion.button
           onClick={onBack}
-          className="flex items-center gap-1 hover:text-gray-600"
+          className={`flex items-center gap-1.5 text-sm ${theme.textMuted} hover:${theme.textPrimary} transition-colors`}
+          whileHover={{ x: -2 }}
+          whileTap={{ scale: 0.95 }}
         >
-          <ArrowLeftCircle size={18} /> Architecture
-        </button>
-        <span className="opacity-50">→</span>
-        <span className="font-bold">Settings</span>
+          <ArrowLeftCircle size={18} /> Back to Architecture
+        </motion.button>
+        <h1
+          className={`text-lg font-semibold ${theme.textPrimary} absolute left-1/2 -translate-x-1/2`}
+        >
+          Configure Training Settings
+        </h1>
+        <div className="w-40"></div> {/* Spacer to balance title */}
       </div>
 
-      {/* grid -- three columns, no scroll required on 1080 p  */}
       <motion.div
-        className="max-w-7xl mx-auto grid lg:grid-cols-3 gap-6 px-6"
-        variants={{ show: { transition: { staggerChildren: 0.1 } } }}
+        className="flex-grow max-w-7xl w-full mx-auto grid lg:grid-cols-3 gap-6 p-6 sm:p-8 items-start" // items-start for varying card heights
+        variants={sectionContainerVariants}
         initial="hidden"
         animate="show"
       >
-        {/* Mode (full first row) */}
-
-        <motion.div
-          custom={0}
-          variants={staggerKids}
-          className="lg:col-span-3 p-4 rounded-2xl bg-white shadow-md"
-        >
-          <h2 className="text-lg font-bold mb-3">Mode (Activation + Loss)</h2>
-          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {[
-              "1 - Sigmoid + Mean Squared Error",
-              "2 - Sigmoid + Binary Cross-Entropy",
-              "3 - Tanh + Mean Squared Error",
-              "4 - ReLU + Sigmoid + Binary Cross-Entropy",
-              "5 - ReLU + Softmax + Cross-Entropy",
-            ].map((opt) => {
-              const id = parseInt(opt.split(" ")[0], 10);
-              const isSelected = mode_id === id;
-              return (
-                <div key={id} className="relative group">
-                  <label
-                    className={`
-                      flex items-center p-3 border rounded-xl cursor-pointer transition
-                      ${
-                        isSelected
-                          ? "bg-gray-800 text-white shadow-lg"
-                          : "bg-white text-black hover:bg-gray-100"
-                      }
-                    `}
-                  >
-                    <input
-                      type="radio"
-                      name="mode_id"
-                      className="sr-only"
-                      value={id}
-                      checked={isSelected}
-                      onChange={() => {
-                        setMode_id(id);
-                        showBadge(`Mode: ${id}`);
-                      }}
-                    />
-                    <span className="truncate whitespace-nowrap">{opt}</span>
-                  </label>
-                  <button
-                    onClick={() => setInfoId(id)}
-                    className="
-                       group-hover:block absolute top-2 right-2
-                      bg-transparent text-gray-700 p-1 rounded-full
-                      hover:bg-gray-300
-                    "
-                  >
-                    <Info size={18} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </motion.div>
-
-        <AnimatePresence>
-          {infoId !== null && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-                className="relative bg-white w-3/4 max-w-lg max-h-[80vh] overflow-y-auto p-6 rounded-lg shadow-2xl"
+        {/* Column 1: Mode & General Training */}
+        <div className="flex flex-col gap-6 lg:col-span-1">
+          {" "}
+          {/* Explicit column span */}
+          <StaggeredChild
+            className={`p-6 rounded-xl ${theme.cardAlt} border z-40 ${theme.divider} shadow-xl h-full`}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                className={`text-lg font-semibold ${theme.textPrimary} flex items-center gap-2`}
               >
-                <button
-                  onClick={() => setInfoId(null)}
-                  className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 text-2xl"
-                >
-                  ×
-                </button>
-                <h3 className="text-xl font-bold mb-4">
-                  {[
-                    "1 - Sigmoid + Mean Squared Error",
-                    "2 - Sigmoid + Binary Cross-Entropy",
-                    "3 - Tanh + Mean Squared Error",
-                    "4 - ReLU (hidden) + Sigmoid (output) + Binary Cross-Entropy",
-                    "5 - ReLU (hidden) + Softmax (output) + Cross-Entropy",
-                  ].find((o) => parseInt(o.split(" ")[0], 10) === infoId)}
-                </h3>
-                <ul className="list-disc list-inside space-y-2 text-sm">
-                  {modeDescriptions[infoId].map((item, idx) => (
-                    <li key={idx}>{item}</li>
-                  ))}
-                </ul>
-              </motion.div>
+                <Palette size={20} className={`text-${theme.accent}-400`} />
+                Mode
+              </h2>
+              <InfoButton onClick={() => handleInfoClick("mode_info")} />
             </div>
-          )}
-        </AnimatePresence>
-
-        <motion.div
-          custom={1}
-          variants={staggerKids}
-          className="p-4 rounded-2xl bg-white shadow-md flex flex-col"
-        >
-          <h2 className="text-base font-bold">General Training</h2>
-
-          {/* Batch size dropdown */}
-          <FloatInput>
-            <span className="pb-2">Batch Size</span>
-            <FlySelect
+            <DarkFlySelect
+              id="mode_id_select"
+              label="Activation & Loss"
+              options={modeOptions}
+              value={mode_id}
+              onChange={setMode_id}
+            />
+          </StaggeredChild>
+          <StaggeredChild
+            className={`p-6 rounded-xl ${theme.cardAlt} border ${theme.divider} shadow-xl space-y-6 h-full`}
+          >
+            <div className="flex items-center justify-between">
+              <h2
+                className={`text-lg font-semibold ${theme.textPrimary} flex items-center gap-2`}
+              >
+                <Cog size={20} className={`text-${theme.accent}-400`} />
+                General Training
+              </h2>
+              {/* No general info button here, specific ones below */}
+            </div>
+            <DarkFlySelect
+              id="batch_size_select"
+              label="Batch Size"
+              options={batchSizeOptions}
               value={batchSize}
-              options={[1, 8, 16, 32, 64, 128]}
-              onChange={(v) => {
-                setBatchSize(v);
-                showBadge(`Batch Size: ${v}`);
-              }}
+              onChange={setBatchSize}
+              infoClick={() => handleInfoClick("batchSize")}
+              className="z-40"
             />
-            <span className="text-[11px] opacity-60 pt-3">
-              1 → feed samples one-by-one
-            </span>
-          </FloatInput>
-
-          {/* epochs */}
-          <FloatInput>
-            <span className="pb-2">Epochs</span>
-            <input
-              type="number"
-              min={1}
+            <DarkFloatInput
+              label={`Epochs`}
+              id="epochs_input"
               value={epochs}
-              onChange={(e) => {
-                setEpochs(parseInt(e.target.value));
-                showBadge(`Epochs: ${e.target.value}`);
-              }}
-              className="border px-3 py-2 rounded w-full bg-white"
-            />
-          </FloatInput>
-        </motion.div>
+              wrapperClassName="mt-1"
+            >
+              <input
+                type="number"
+                min={1}
+                max={50000}
+                value={epochs}
+                onChange={(e) =>
+                  setEpochs(Math.max(1, parseInt(e.target.value)))
+                }
+                className={`w-full border rounded-lg px-3 py-3 ${theme.inputBg} ${theme.inputBorder} ${theme.textPrimary} hover:border-${theme.accent}-500/70 focus:${theme.inputFocusBorder} focus:ring-1 focus:ring-${theme.accent}-500 outline-none transition-colors text-sm`}
+              />
+            </DarkFloatInput>
+          </StaggeredChild>
+        </div>
 
-        {/* Algo and Dropout */}
-        <motion.div
-          custom={2}
-          variants={staggerKids}
-          className="p-4 rounded-2xl bg-white shadow-md flex flex-col gap-4"
+        {/* Column 2: Algorithms & Dropout */}
+        <StaggeredChild
+          className={`p-6 rounded-xl ${theme.cardAlt} border ${theme.divider} shadow-xl h-full flex flex-col space-y-6 lg:col-span-1`}
         >
-          <h2 className="text-base font-bold">Algorithms and Dropout</h2>
-          {/* optimizer */}
-          <div>
-            <div className="flex items-center">
-              <span className="pr-3">Optimizer </span>
-              <button
-                onClick={() => setSettingInfoId("optimizer")}
-                className="top-2 right-2 
-                bg-transparent text-gray-700 p-1 rounded-full
-                hover:bg-gray-300"
-              >
-                <Info size={18} />
-              </button>
-            </div>
-            <div className="flex gap-3 flex-wrap pt-3 pb-4">
-              {["SGD", "RMSProp", "Adam"].map((opt) => (
-                <label key={opt} className="relative cursor-pointer text-sm">
-                  <input
-                    type="radio"
-                    name="optimizer"
-                    value={opt}
-                    checked={reverseMap[optimizer] === opt}
-                    onChange={() => {
-                      const val = optimizerMap[opt]; // get int from string
-                      setOptimizer(val); // set optimizer to int
-                      showBadge(`${opt} Optimizer`);
-                    }}
-                    className="peer sr-only"
-                  />
-                  <span
-                    className={`px-3 py-1 border rounded-full ${
-                      reverseMap[optimizer] === opt
-                        ? "bg-gray-900 text-white"
-                        : "hover:bg-gray-100"
-                    }`}
-                  >
-                    {opt}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-          {/* dropout */}
-          <div className="flex items-center pb-4 gap-4">
-            <span className="font-medium">Dropout</span>
-            <GlowToggle
-              enabled={useDropout}
-              setEnabled={(v) => {
-                setUseDropout(v);
-                showBadge(v ? "Dropout ON" : "Dropout OFF");
-              }}
+          <h2
+            className={`text-lg font-semibold ${theme.textPrimary} flex items-center gap-2`}
+          >
+            <SlidersHorizontal
+              size={20}
+              className={`text-${theme.accent}-400`}
             />
-            <div className="flex items-center">
-              <button
-                onClick={() => setSettingInfoId("dropout")}
-                className="top-2 right-2 
-                bg-transparent text-gray-700 p-1 rounded-full
-                hover:bg-gray-300"
-              >
-                <Info size={18} />
-              </button>
-            </div>
-          </div>
+            Algorithms & Regularization
+          </h2>
+          <DarkFlySelect
+            id="optimizer_select"
+            label="Optimizer Algorithm"
+            options={optimizerOptions}
+            value={optimizer}
+            onChange={setOptimizer}
+            infoClick={() => handleInfoClick("optimizer")}
+          />
+          <DarkFlySelect
+            id="weight_init_select"
+            label="Weight Initializer"
+            options={weightInitOptions}
+            value={weightInit}
+            onChange={setWeightInit}
+            infoClick={() => handleInfoClick("weightInitializer")}
+          />
+          <DarkGlowToggle
+            enabled={useDropout}
+            setEnabled={setUseDropout}
+            label="Dropout Regularization"
+            infoClick={() => handleInfoClick("dropout")}
+          />
           <AnimatePresence>
             {useDropout && (
               <motion.div
-                key="dropSlider"
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
+                key="dropout_slider_container"
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: "auto", marginTop: "0.75rem" }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="overflow-hidden"
               >
-                <FloatInput label="Dropout Rate">
-                  <BasicSlider
-                    value={dropout}
-                    setValue={(v) => {
-                      setDropout(v);
-                      showBadge(`Dropout Rate: ${v}`);
-                    }}
-                    min={0}
-                    max={0.9}
-                    step={0.01}
-                  />
-                </FloatInput>
+                <DarkBasicSlider
+                  id="dropout_slider"
+                  label="Dropout Rate"
+                  unit=""
+                  value={dropout}
+                  setValue={setDropout}
+                  min={0.05}
+                  max={0.8}
+                  step={0.01}
+                />
               </motion.div>
             )}
           </AnimatePresence>
-          {/* weight init */}
-          <div>
-            <div className="flex items-center">
-              <span>Weight Initializer </span>
-              <button
-                onClick={() => setSettingInfoId("weightInit")}
-                className="top-2 right-2 ml-3
-                bg-transparent text-gray-700 p-1 rounded-full
-                hover:bg-gray-300"
-              >
-                <Info size={18} />
-              </button>
-            </div>
-            <div className="flex gap-3 flex-wrap pt-3 pb-1">
-              {["Random", "Xavier", "He"].map((opt) => (
-                <label key={opt} className="relative cursor-pointer text-sm">
-                  <input
-                    type="radio"
-                    name="weightInit"
-                    value={opt}
-                    checked={reverseWeightInitMap[weightInit] === opt}
-                    onChange={() => {
-                      const w_val = weightInitMap[opt]; // get int from string
-                      setWeightInit(w_val); // set weightInit to int
-                      showBadge(`${opt} Weight Initializer`);
-                    }}
-                    className="peer sr-only"
-                  />
-                  <span
-                    className={`px-3 py-1 border rounded-full ${
-                      reverseWeightInitMap[weightInit] === opt
-                        ? "bg-gray-900 text-white"
-                        : "hover:bg-gray-100"
-                    }`}
-                  >
-                    {opt}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </motion.div>
+        </StaggeredChild>
 
-        {/* Learning Rate */}
-        <motion.div
-          custom={3}
-          variants={staggerKids}
-          className="p-4 rounded-2xl bg-white shadow-md flex flex-col gap-4"
+        {/* Column 3: Learning Rate */}
+        <StaggeredChild
+          className={`p-6 rounded-xl ${theme.cardAlt} border ${theme.divider} shadow-xl h-full flex flex-col space-y-6 lg:col-span-1`}
         >
-          <h2 className="text-base font-bold">Learning Rate Tuning</h2>
-          <label className="flex flex-col gap-2">
-            <div className="flex items-center">
-              <span>Learning Rate</span>
-              <button
-                onClick={() => setSettingInfoId("learningRate")}
-                className="top-2 right-2 ml-3
-                bg-transparent text-gray-700 p-1 rounded-full
-                hover:bg-gray-300"
-              >
-                <Info size={18} />
-              </button>
-            </div>
+          <h2
+            className={`text-lg font-semibold ${theme.textPrimary} flex items-center gap-2`}
+          >
+            <Zap size={20} className={`text-${theme.accent}-400`} />
+            Learning Rate
+          </h2>
+          <DarkFloatInput
+            label={`Rate Value`}
+            id="lr_input"
+            value={learningRate.toExponential(1)}
+            wrapperClassName="mt-1"
+          >
             <input
               type="number"
-              step="0.001"
-              value={Math.abs(learningRate)}
-              onChange={(e) => {
-                const v = parseFloat(e.target.value);
-                setLearningRate(v);
-                showBadge(`Learning Rate: ${v.toFixed(3)}`);
-              }}
-              className="border px-3 py-2 rounded w-full bg-white"
+              step="0.00001"
+              min="0.000001"
+              max="0.1"
+              value={learningRate}
+              onChange={(e) =>
+                setLearningRate(Math.max(0.000001, parseFloat(e.target.value)))
+              }
+              className={`w-full border rounded-lg px-3 py-3 ${theme.inputBg} ${theme.inputBorder} ${theme.textPrimary} hover:border-${theme.accent}-500/70 focus:${theme.inputFocusBorder} focus:ring-1 focus:ring-${theme.accent}-500 outline-none transition-colors text-sm`}
             />
-          </label>
-          <div className="flex items-center gap-3 mt-2">
-            <span>Use LR Scheduler</span>
-            <GlowToggle
-              enabled={useLrScheduler}
-              setEnabled={(v) => {
-                setUseLrScheduler(v);
-                showBadge(v ? "Scheduler ON" : "Scheduler OFF");
-              }}
-            />
-            <button
-              onClick={() => setSettingInfoId("LearningRateScheduler")}
-              className="top-2 right-2
-                bg-transparent text-gray-700 p-1 rounded-full
-                hover:bg-gray-300"
-            >
-              <Info size={18} />
-            </button>
-          </div>
-          <span className="text-[11px] opacity-60 mt-1">
-            Cosine decay from current LR → 0.0001
-          </span>
-        </motion.div>
+          </DarkFloatInput>
+          <InfoButton
+            onClick={() => handleInfoClick("learningRate")}
+            className="self-start -mt-4"
+          />
+
+          <DarkGlowToggle
+            enabled={useLrScheduler}
+            setEnabled={setUseLrScheduler}
+            label="Use LR Scheduler (Cosine Decay)"
+            infoClick={() => handleInfoClick("lrScheduler")}
+          />
+        </StaggeredChild>
       </motion.div>
 
+      {/* Info Modal (Styled for dark theme) */}
       <AnimatePresence>
-        {settingInfoId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        {infoModalContent && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" // Darker backdrop
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setInfoModalContent(null)}
+          >
             <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              className="relative bg-white w-3/4 max-w-md p-6 rounded-lg shadow-2xl"
+              className={`relative ${theme.surface} w-full max-w-lg max-h-[85vh] overflow-y-auto p-6 sm:p-8 rounded-2xl shadow-2xl border ${theme.divider} scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-700/50`}
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: "spring", stiffness: 280, damping: 20 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={() => setSettingInfoId(null)}
-                className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 text-2xl"
+              <motion.button
+                onClick={() => setInfoModalContent(null)}
+                className={`absolute top-4 right-4 p-1.5 rounded-full text-slate-500 hover:text-slate-100 hover:bg-slate-700 transition-colors`}
+                whileHover={{ rotate: 90, scale: 1.1 }}
+                whileTap={{ scale: 0.85 }}
               >
-                ×
-              </button>
-              <h3 className="text-xl font-bold mb-4 capitalize">
-                {settingInfoId.replace(/([A-Z])/g, " $1")}
+                <XCircle size={22} />
+              </motion.button>
+              <h3
+                className={`text-xl sm:text-2xl font-semibold mb-5 ${theme.textPrimary} border-b ${theme.divider} pb-3`}
+              >
+                {infoModalContent.title}
               </h3>
-              <ul className="list-disc list-inside space-y-2 text-sm">
-                {settingDescriptions[settingInfoId].map((item, i) => (
-                  <li key={i}>{item}</li>
+              <ul
+                className={`list-disc list-outside space-y-2 text-sm sm:text-base ${theme.textSecondary} leading-relaxed pl-5`}
+              >
+                {infoModalContent.items.map((item, idx) => (
+                  <li key={idx}>{item}</li>
                 ))}
               </ul>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* live badge */}
-      <AnimatePresence>
-        {badge && (
-          <motion.span
-            key="liveBadge"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1.05, opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 18 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-1 rounded-full shadow-lg pointer-events-none"
-          >
-            {badge}
-          </motion.span>
-        )}
-      </AnimatePresence>
-      {/* nav buttons */}
-      <div className="fixed bottom-6 right-6 flex gap-4">
-        {["Back", "Continue"].map((btn) => (
-          <motion.button
-            key={btn}
-            onClick={() => {
-              if (btn === "Back") {
-                onBack();
-              } else {
-                const isValid =
-                  mode_id !== null &&
-                  epochs !== null &&
-                  optimizer !== null &&
-                  weightInit !== null &&
-                  (!useDropout || (useDropout && dropout !== null));
-
-                if (!isValid) {
-                  setBadge("Please fill out all settings.");
-                  clearTimeout(window.__badgeTimer);
-                  window.__badgeTimer = setTimeout(() => setBadge(null), 1500);
-                  return;
-                }
-
-                onContinue();
-              }
-            }}
-            className={`relative overflow-hidden px-5 py-2 rounded-full text-sm font-semibold ${
-              btn === "Back" ? "border bg-white" : "bg-gray-900 text-white"
-            }`}
-            whileHover="hover"
-          >
-            <AnimatePresence>
-              <motion.span
-                className="absolute inset-0 opacity-0"
-                variants={{ hover: rippleAnim }}
-              >
-                <motion.span
-                  variants={rippleAnim}
-                  className="absolute left-1/2 top-1/2 w-1 h-1 bg-current rounded-full"
-                />
-              </motion.span>
-            </AnimatePresence>
-            {btn === "Back" ? (
-              <>
-                <ArrowLeftCircle size={20} className="inline mr-1 " /> Back
-              </>
-            ) : (
-              <>
-                Continue <ArrowRightCircle size={20} className="inline ml-1" />
-              </>
-            )}
-          </motion.button>
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div>
-        <p className="absolute bottom-24 left-1/2 transform -translate-x-1/2 text-s font-medium text-gray-800">
-          Be sure to click the info buttons near each setting to learn more
-          about what each one does!
-        </p>
+      {/* Navigation Buttons */}
+      <div
+        className={`sticky bottom-0 w-full px-6 py-3.5 ${theme.bg} border-t ${theme.divider} flex justify-end gap-4 z-20 mt-auto shadow-top-lg`}
+      >
+        {" "}
+        {/* Added shadow-top-lg (custom utility) */}
+        <motion.button
+          onClick={onBack}
+          className={`px-6 py-2.5 rounded-lg text-sm font-medium ${theme.card} border ${theme.inputBorder} ${theme.textSecondary} hover:${theme.textPrimary} hover:border-${theme.accent}-500/70 transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-${theme.accent}-500/70 focus:ring-offset-2 focus:ring-offset-slate-900`}
+          whileHover={{
+            y: -2,
+            scale: 1.03,
+            transition: { type: "spring", stiffness: 300, damping: 15 },
+          }}
+          whileTap={{ scale: 0.97 }}
+        >
+          <ArrowLeftCircle size={18} /> Back
+        </motion.button>
+        <motion.button
+          onClick={onContinue}
+          className={`px-6 py-2.5 rounded-lg text-sm font-semibold bg-gradient-to-r from-${theme.accent}-500 to-${theme.accent}-600 ${theme.textPrimary} hover:from-${theme.accent}-400 hover:to-${theme.accent}-500 shadow-lg hover:shadow-${theme.accent}-500/40 transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-${theme.accent}-400 focus:ring-offset-2 focus:ring-offset-slate-900`}
+          whileHover={{
+            y: -2,
+            scale: 1.03,
+            transition: { type: "spring", stiffness: 300, damping: 15 },
+          }}
+          whileTap={{ scale: 0.97 }}
+        >
+          Continue to Data <ArrowRightCircle size={18} />
+        </motion.button>
       </div>
     </motion.div>
   );

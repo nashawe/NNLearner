@@ -8,3 +8,62 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* src/index.css or similar */
+:root {
+  --color-sky-rgb: 14, 165, 233; /* Example for sky-500 */
+  --color-emerald-rgb: 16, 185, 129; /* Example for emerald-500 */
+  /* Add other accent RGBs if needed */
+}
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
+}
+@keyframes pulse-slower {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(1.03);
+  }
+}
+.animate-pulse-slow {
+  animation: pulse-slow 15s infinite ease-in-out;
+}
+.animate-pulse-slower {
+  animation: pulse-slower 20s infinite ease-in-out;
+}
+
+@keyframes pulse-iją {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 8px rgba(250, 204, 21, 0);
+  }
+}
+.animate-pulse-iją {
+  animation: pulse-iją 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+:root {
+  --color-sky-rgb: 14, 165, 233; /* For text-sky-400 or 500 */
+  --color-emerald-rgb: 16, 185, 129; /* For text-emerald-400 or 500 */
+  --color-rose-rgb: 225, 29, 72; /* For text-rose-400 or 500 */
+  --color-amber-rgb: 245, 158, 11; /* For text-amber-400 or 500 */
+  --color-violet-rgb: 139, 92, 246; /* For text-violet-400 or 500 */
+  --color-pink-rgb: 236, 72, 153; /* For text-pink-400 or 500 */
+  /* Add any other accent colors you use in archItems.colorClass */
+}
