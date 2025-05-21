@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { CodeXml } from "lucide-react"; // Example Project Icon
-import { gsap } from "gsap";
 
 // Assume theme is defined globally or imported
 const theme = {
