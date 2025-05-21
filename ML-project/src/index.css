@@ -1,20 +1,165 @@
+/* src/index.css */
+
+/* 1. Tailwind Directives (Keep these at the top) */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-.clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-/* src/index.css or similar */
+/* 2. CSS Custom Properties (Centralized Theming Variables) */
 :root {
-  --color-sky-rgb: 14, 165, 233; /* Example for sky-500 */
-  --color-emerald-rgb: 16, 185, 129; /* Example for emerald-500 */
-  /* Add other accent RGBs if needed */
+  /* Base Theme Colors (consider deriving these from your Tailwind config if possible, or define manually) */
+  --color-bg-primary: 2 6 23; /* slate-950 (example, match your Tailwind actual RGB) */
+  --color-bg-surface: 15 23 42; /* slate-900 */
+  --color-text-primary: 248 250 252; /* slate-50 */
+  --color-text-secondary: 203 213 225; /* slate-300 */
+  --color-text-muted: 148 163 184; /* slate-400 */
+  --color-divider: 51 65 85; /* slate-700 */
+
+  /* Accent Colors (RGB for use in rgba() for opacity) */
+  --color-accent-sky-rgb: 14, 165, 233; /* sky-500 */
+  --color-accent-emerald-rgb: 16, 185, 129; /* emerald-500 */
+  --color-accent-rose-rgb: 225, 29, 72; /* rose-600 */
+  /* Add others if you frequently use them with opacity */
+  /* --color-accent-amber-rgb: 245, 158, 11; */
+  /* --color-accent-violet-rgb: 139, 92, 246; */
+
+  /* Font Stacks (Optional, if you want to enforce consistent fonts) */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  /* Default Transition (can be used in Tailwind config too) */
+  --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-medium: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-@keyframes pulse-slow {
+
+/* 3. Base HTML & Body Styling */
+@layer base {
+  html {
+    @apply scroll-smooth; /* Smooth scrolling for anchors */
+    font-family: var(--font-sans);
+    /* Prevent layout shifts due to scrollbar appearing/disappearing */
+    /* overflow-y: scroll;  Enable if you prefer always-on scrollbar */
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-300 antialiased;
+    /* Use your theme's primary background and default text color */
+    /* background-color: rgb(var(--color-bg-primary)); */
+    /* color: rgb(var(--color-text-secondary)); */
+    min-height: 100vh;
+  }
+
+  /* Selection highlight style */
+  ::selection {
+    @apply bg-sky-500 text-white; /* Or use --color-accent-sky-rgb with opacity */
+  }
+  ::-moz-selection {
+    /* Firefox */
+    @apply bg-sky-500 text-white;
+  }
+
+  /* Optional: Default styles for headings if not covered sufficiently by Tailwind typography */
+  /* h1, h2, h3, h4, h5, h6 {
+    @apply text-slate-100; 
+  } */
+}
+
+/* 4. Reusable Component Styles & Utilities */
+@layer components {
+  .clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Example of a custom button style using theme variables if needed outside Tailwind component classes */
+  /* .btn-futuristic {
+    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-300 shadow-lg;
+    background-color: rgba(var(--color-accent-sky-rgb), 0.8);
+    color: rgb(var(--color-text-primary));
+    border: 1px solid rgba(var(--color-accent-sky-rgb), 1);
+  }
+  .btn-futuristic:hover {
+    background-color: rgba(var(--color-accent-sky-rgb), 1);
+    box-shadow: 0 0 15px 3px rgba(var(--color-accent-sky-rgb), 0.4);
+  } */
+
+  /* Scrollbar Styling (for Webkit browsers - Chrome, Safari, Edge) */
+  .custom-scrollbar::-webkit-scrollbar {
+    @apply w-2 h-2; /* Width/height of scrollbar */
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-slate-800 rounded-full; /* Or var(--color-bg-surface) */
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-600 rounded-full;
+    /* background-color: rgba(var(--color-accent-sky-rgb), 0.6); */ /* For accent scrollbar */
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-500;
+    /* background-color: rgba(var(--color-accent-sky-rgb), 0.8); */
+  }
+  /* Apply to html or body for global effect, or specific containers */
+  html.custom-scrollbar {
+    scrollbar-width: thin; /* For Firefox */
+    scrollbar-color: theme("colors.slate.600") theme("colors.slate.800"); /* For Firefox: thumb track */
+    /* scrollbar-color: rgba(var(--color-accent-sky-rgb), 0.6) rgb(var(--color-bg-surface)); */
+  }
+
+  /* Accessibility: Enhanced Focus Visible States */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-offset-2 ring-offset-slate-900 ring-sky-400 rounded-sm;
+    /* outline-color: rgba(var(--color-accent-sky-rgb), 1); */
+  }
+}
+
+/* 5. Keyframe Animations (Define your reusable animations here) */
+
+/* Removed duplicate :root CSS variable definitions */
+
+/* Soft pulsing opacity and scale - good for subtle background elements or inactive states */
+@keyframes pulse-subtle {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+.animate-pulse-subtle {
+  animation: pulse-subtle 18s infinite ease-in-out;
+}
+
+/* Example "Energy Flow" or "Active" pulse - for interactive elements */
+@keyframes pulse-accent-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px 0px rgba(var(--color-accent-sky-rgb), 0.5),
+      0 0 0px 0px rgba(var(--color-accent-sky-rgb), 0.3);
+    /* opacity: 0.8; */
+  }
+  50% {
+    box-shadow: 0 0 15px 5px rgba(var(--color-accent-sky-rgb), 0.3),
+      0 0 10px 3px rgba(var(--color-accent-sky-rgb), 0.2);
+    /* opacity: 1; */
+  }
+}
+.animate-pulse-accent-glow {
+  /* Apply to elements needing a futuristic, active pulse */
+  animation: pulse-accent-glow 2.5s infinite ease-in-out;
+}
+
+/* From your existing animations - keeping them if used, renamed for clarity if possible */
+/* Original .animate-pulse-slow, .animate-pulse-slower */
+@keyframes bg-element-pulse-slow {
+  /* Renamed from pulse-slow for clarity */
   0%,
   100% {
     opacity: 0.3;
@@ -25,7 +170,13 @@
     transform: scale(1.05);
   }
 }
-@keyframes pulse-slower {
+.animate-bg-pulse-slow {
+  /* Corresponding class name change */
+  animation: bg-element-pulse-slow 15s infinite ease-in-out;
+}
+
+@keyframes bg-element-pulse-slower {
+  /* Renamed from pulse-slower for clarity */
   0%,
   100% {
     opacity: 0.2;
@@ -36,34 +187,29 @@
     transform: scale(1.03);
   }
 }
-.animate-pulse-slow {
-  animation: pulse-slow 15s infinite ease-in-out;
-}
-.animate-pulse-slower {
-  animation: pulse-slower 20s infinite ease-in-out;
+.animate-bg-pulse-slower {
+  /* Corresponding class name change */
+  animation: bg-element-pulse-slower 20s infinite ease-in-out;
 }
 
-@keyframes pulse-iją {
+/* Original .animate-pulse-iją - Consider renaming 'pulse-iją' to something descriptive */
+/* This looks like a notification pulse perhaps? */
+@keyframes notification-pulse {
+  /* Assuming this was its purpose, renamed from pulse-iją */
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4);
-  }
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7);
+  } /* Using yellow for example */
   50% {
     opacity: 0.8;
-    box-shadow: 0 0 0 8px rgba(250, 204, 21, 0);
+    box-shadow: 0 0 0 10px rgba(250, 204, 21, 0);
   }
 }
-.animate-pulse-iją {
-  animation: pulse-iją 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.animate-notification-pulse {
+  /* Corresponding class name change */
+  animation: notification-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-:root {
-  --color-sky-rgb: 14, 165, 233; /* For text-sky-400 or 500 */
-  --color-emerald-rgb: 16, 185, 129; /* For text-emerald-400 or 500 */
-  --color-rose-rgb: 225, 29, 72; /* For text-rose-400 or 500 */
-  --color-amber-rgb: 245, 158, 11; /* For text-amber-400 or 500 */
-  --color-violet-rgb: 139, 92, 246; /* For text-violet-400 or 500 */
-  --color-pink-rgb: 236, 72, 153; /* For text-pink-400 or 500 */
-  /* Add any other accent colors you use in archItems.colorClass */
-}
+/* Tailwind Utility Layer (Keep this at the end usually) */
+/* @tailwind utilities; (Already included at the top, usually fine there) */

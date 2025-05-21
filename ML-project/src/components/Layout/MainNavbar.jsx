@@ -57,28 +57,6 @@ const MainNavbar = ({ navLinks }) => {
           {/* Placeholder Name */}
         </span>
       </motion.div>
-
-      <div className="flex items-center gap-3 md:gap-5">
-        {navLinks.map(
-          (
-            { label, path, Icon } // Assuming navLinks might have Icon
-          ) => (
-            <motion.button
-              key={label}
-              onClick={() => navigate(path)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-200
-                       ${theme.textSecondary} hover:${theme.textPrimary} 
-                       hover:bg-${theme.accent}-500/20 focus:outline-none focus:ring-2 focus:ring-${theme.accent}-500/50 focus:ring-offset-2 focus:ring-offset-slate-900`}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              title={`Go to ${label}`}
-            >
-              {Icon && <Icon size={16} className="mr-1.5 inline" />}
-              {label}
-            </motion.button>
-          )
-        )}
-      </div>
     </motion.nav>
   );
 };

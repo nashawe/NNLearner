@@ -1,10 +1,12 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./main/HomePage";
-import ArchitecturePage from "./build/ArchitecturePage";
+import BuildHero from "./build/BuildHero";
 import TrainPage from "./train/TrainPage";
 import Explore from "./explore/Explore";
 import LearnPage from "./learn/LearnPage";
+import ArchitecturePage from "./build/ArchitecturePage";
+import TutorialPage from "./pages/TutorialPage";
 
 function App() {
   return (
@@ -13,9 +15,12 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/train" element={<TrainPage />} />
-          <Route path="/build" element={<ArchitecturePage />} />
+          <Route path="/build" element={<BuildHero />} />
+          <Route path="/build/design" element={<ArchitecturePage />} />
+          {/* Add dynamic route for specific build */}
           <Route path="/explore" element={<Explore />} />
           <Route path="/learn" element={<LearnPage />} />
+          <Route path="/tutorial" element={<TutorialPage />} />
           {/* Add more routes as needed */}
         </Routes>
       </div>

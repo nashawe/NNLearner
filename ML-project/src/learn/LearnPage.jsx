@@ -1,10 +1,10 @@
 // --- START OF FILE LearnPage.jsx ---
-
 import React, { useEffect, useRef, useLayoutEffect, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate, useLocation } from "react-router-dom"; // Added for navbar
 import {
   Layers,
   Cpu,
@@ -14,6 +14,7 @@ import {
   Target,
   ExternalLink,
   BookOpen,
+  CodeXml,
   Github,
   Menu,
   X,
@@ -24,12 +25,15 @@ import {
   CheckCircle,
   Home,
   ChevronDown,
+  Blocks,
+  Waypoints, // Added Blocks, Waypoints for navLinks
 } from "lucide-react";
+import MainNavbar from "../components/layout/MainNavbar";
 
 gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
-// --- Helper for GSAP Text Animations (Basic Word Splitting) ---
 const splitTextToSpans = (text) => {
+  /* ... (same as before) ... */
   return text.split(/\s+/).map((word, index) => (
     <span key={index} className="inline-block overflow-hidden">
       <span className="inline-block translate-y-full">{word} </span>
@@ -37,14 +41,14 @@ const splitTextToSpans = (text) => {
   ));
 };
 
-// --- Configuration for Sections and TOC ---
 const SECTIONS = [
+  /* ... (same as before) ... */
   {
     id: "introduction",
     title: "Project Overview",
     Icon: Lightbulb,
     shortTitle: "Overview",
-  }, // Added shortTitle for TOC
+  },
   {
     id: "core-engine",
     title: "Custom NN Engine",
@@ -83,12 +87,21 @@ const SECTIONS = [
   },
 ];
 
-// --- Main Learn Page Component ---
+// Consistent navLinks definition
+const navLinks = [
+  { label: "Learn", path: "/learn", Icon: BookOpen },
+  { label: "Build", path: "/build", Icon: Blocks },
+  { label: "Explore", path: "/explore", Icon: Waypoints },
+];
+
 const LearnPage = () => {
+  const [isScrolled, setIsScrolled] = React.useState(false); // For Navbar scroll effect
   const mainContentRef = useRef(null);
   const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
   const [isTocOpen, setIsTocOpen] = useState(false);
   const allSectionRefs = useRef([]);
+  const navigate = useNavigate(); // For top-right navbar
+  const location = useLocation(); // For top-right navbar active state
 
   const theme = {
     bg: "bg-slate-950",
@@ -98,16 +111,23 @@ const LearnPage = () => {
     textPrimary: "text-slate-50",
     textSecondary: "text-slate-300",
     textMuted: "text-slate-400",
-    accent: "sky",
+    accent: "sky", // Main accent for LearnPage
     accentSecondary: "rose",
+    accentTertiary: "emerald",
+    // Navbar specific (consistent with others)
+    navbarBg: "bg-slate-900/60 backdrop-blur-lg",
+    navbarText: "text-slate-300",
+    navbarHoverText: "text-sky-300", // Using page's main accent for hover
+    navbarActiveText: "text-sky-300 font-semibold",
   };
 
   const nnCanvasRef = useRef(null);
   useEffect(() => {
+    /* ... (NN Canvas animation - same as before) ... */
     const canvas = nnCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return; // Added check for context
+    if (!ctx) return;
 
     let nodes = [];
     const numNodes = 30;
@@ -185,8 +205,8 @@ const LearnPage = () => {
       animationFrameId = requestAnimationFrame(animateNN);
     }
 
-    resizeCanvas(); // Initial call
-    animateNN(); // Start animation
+    resizeCanvas();
+    animateNN();
 
     window.addEventListener("resize", resizeCanvas);
     return () => {
@@ -198,11 +218,11 @@ const LearnPage = () => {
   }, []);
 
   useLayoutEffect(() => {
+    /* ... (GSAP animations for page content - same as before) ... */
     allSectionRefs.current = gsap.utils.toArray(
       ".content-section-wrapper",
       mainContentRef.current
     );
-
     const ctx = gsap.context(() => {
       gsap.fromTo(
         ".hero-title-char",
@@ -253,7 +273,7 @@ const LearnPage = () => {
         }
       );
 
-      allSectionRefs.current.forEach((section, index) => {
+      allSectionRefs.current.forEach((section) => {
         const sectionId = section.id;
         const contentItems = section.querySelectorAll(".content-item");
         const sectionTitle = section.querySelector(".section-title-text");
@@ -277,7 +297,6 @@ const LearnPage = () => {
             }
           );
         }
-
         gsap.fromTo(
           contentItems,
           { opacity: 0, y: 30 },
@@ -350,14 +369,17 @@ const LearnPage = () => {
   }, []);
 
   const handleTocClick = (id) => {
+    /* ... (same as before) ... */
     gsap.to(window, {
-      duration: 1.2, // Slightly slower for smoother feel
-      scrollTo: { y: `#${id}`, offsetY: 0 }, // Offset 0 to bring top of section to top of viewport
+      duration: 1.2,
+      scrollTo: { y: `#${id}`, offsetY: 0 },
       ease: "power2.inOut",
     });
     setIsTocOpen(false);
   };
 
+  // Reusable components (SectionWrapper, FeatureCard, TimelineEvent, PulsatingButton) are the same as before.
+  // For brevity, I'll omit them here, but assume they are present in your actual file.
   const SectionWrapper = ({
     id,
     title,
@@ -389,7 +411,6 @@ const LearnPage = () => {
       </div>
     </section>
   );
-
   const FeatureCard = ({ icon: Icon, title, description }) => (
     <motion.div
       className={`p-4 text-left rounded-lg shadow-lg ${theme.card} ${theme.cardHover} border border-slate-700/50 transition-colors duration-300 content-item`}
@@ -409,7 +430,6 @@ const LearnPage = () => {
       </p>
     </motion.div>
   );
-
   const TimelineEvent = ({ title, description, isLast = false }) => (
     <div className="relative pl-10 pb-6 text-left content-item">
       {!isLast && (
@@ -428,7 +448,6 @@ const LearnPage = () => {
       <p className={`${theme.textMuted} text-xs`}>{description}</p>
     </div>
   );
-
   const PulsatingButton = ({
     href,
     children,
@@ -457,20 +476,83 @@ const LearnPage = () => {
     <>
       <canvas
         ref={nnCanvasRef}
-        className="fixed top-0 left-0 w-[full] h-full -z-10 pointer-events-none" // Added pointer-events-none
+        className="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none"
       ></canvas>
 
       <div
         className={`${theme.bg} ${theme.textSecondary} min-h-screen font-sans`}
       >
-        {/* Sticky TOC for Desktop */}
+        {/* --- INTEGRATED NAVBAR --- */}
+        <motion.nav
+          initial={{ y: -80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{
+            duration: 0.2,
+            delay: 0.1,
+            ease: "easeOut",
+          }} // Slightly faster entrance
+          className={`w-full fixed top-4 right-0 z-50 flex items-center justify-between px-4 sm:px-6 md:px-10 py-3 transition-all duration-200 ease-in-out
+                   ${
+                     isScrolled
+                       ? `${theme.surface} shadow-xl bg-opacity-80 backdrop-blur-lg border-b border-slate-700/50`
+                       : "bg-transparent border-b border-transparent"
+                   }`}
+        >
+          {/* Left Side: Logo/Project Name */}
+          <motion.div
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => navigate("/")}
+            whileHover={{ scale: 1.03 }}
+            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+            title="Go to Homepage"
+          >
+            <CodeXml size={28} className={`text-${theme.accent}-400`} />
+            <span
+              className={`text-xl font-bold ${theme.textPrimary} hidden sm:inline`}
+            >
+              NN<span className={`text-${theme.accent}-400`}>Learner</span>
+            </span>
+          </motion.div>
+
+          {/* Right Side: Navigation Links */}
+          <div className="flex items-center gap-2 md:gap-3">
+            {navLinks.map(({ label, path, Icon }) => (
+              <motion.button
+                key={label}
+                onClick={() => navigate(path)} // CORRECTLY USE navigate
+                className={`px-2.5 py-1.5 md:px-3 md:py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200
+                         ${
+                           (location.pathname.startsWith(path) &&
+                             path !== "/") ||
+                           (location.pathname === "/" && path === "/")
+                             ? `${theme.navbarActiveText} bg-${theme.accent}-500/20 ring-1 ring-${theme.accent}-500/50`
+                             : `${theme.navbarText} hover:${theme.navbarHoverText} hover:bg-slate-700/50`
+                         } 
+                         focus:outline-none focus:ring-2 focus:ring-${
+                           theme.accent
+                         }-500/70 focus:ring-offset-2 focus:ring-offset-slate-900`}
+                whileHover={{ y: -2, scale: 1.03, borderColor: theme.accent }}
+                whileTap={{ scale: 0.97 }}
+                title={`Go to ${label}`}
+              >
+                {Icon && (
+                  <Icon size={14} className="mr-1 md:mr-1.5 inline -mt-0.5" />
+                )}
+                {label}
+              </motion.button>
+            ))}
+          </div>
+        </motion.nav>
+        {/* --- END OF INTEGRATED NAVBAR --- */}
+
+        {/* Sticky TOC for Desktop (ensure z-index is below new top-right navbar) */}
         <aside className="hidden lg:block fixed top-1/2 -translate-y-1/2 left-5 z-40">
+          {/* ... (Desktop TOC content - same as before, ensure Home button in TOC also uses navigate if it's for client-side routing) ... */}
           <nav
             className={`p-2.5 rounded-md ${theme.surface} bg-opacity-70 backdrop-blur-sm shadow-xl border border-slate-700/50 max-w-[200px]`}
           >
-            {/* Home Button for Desktop TOC */}
-            <motion.a
-              href="/" // Assuming your home page is at the root
+            <motion.button // Changed to button for consistent client-side nav
+              onClick={() => navigate("/")}
               className={`w-full text-left px-1.5 py-1.5 mb-2 rounded text-xs transition-all duration-150 flex items-center gap-1 ${theme.textMuted} hover:${theme.textSecondary} hover:bg-slate-700/30`}
               whileHover={{ x: 1.5 }}
               title="Go to Home Page"
@@ -479,8 +561,7 @@ const LearnPage = () => {
                 className={`w-3.5 h-3.5 shrink-0 text-${theme.accent}-400/80`}
               />
               <span className="truncate">Home</span>
-            </motion.a>
-
+            </motion.button>
             <h3
               className={`text-xs font-semibold mb-1.5 ${theme.textMuted} uppercase tracking-wide px-1.5`}
             >
@@ -507,8 +588,7 @@ const LearnPage = () => {
                     />
                     <span className="truncate">
                       {section.shortTitle || section.title}
-                    </span>{" "}
-                    {/* Use shortTitle if available */}
+                    </span>
                   </motion.button>
                 </li>
               ))}
@@ -516,17 +596,20 @@ const LearnPage = () => {
           </nav>
         </aside>
 
-        {/* Mobile Header with Home and Menu Toggle */}
-        <div className="lg:hidden fixed top-3 right-3 z-50 flex items-center gap-2">
-          {/* Home Button for Mobile */}
-          <motion.a
-            href="/" // Assuming your home page is at the root
+        {/* Mobile Header with Menu Toggle (Home button here is separate from top-right nav) */}
+        {/* Consider if you need TWO home buttons on mobile if top-right nav is always visible */}
+        <div className="lg:hidden fixed top-3 left-3 right-3 z-50 flex items-center justify-between">
+          {" "}
+          {/* Adjusted to be full width and space-between */}
+          {/* Home Button for Mobile (Can be part of top-right nav too) */}
+          <motion.button // Changed to button for consistent client-side nav
+            onClick={() => navigate("/")}
             className={`p-2.5 rounded-full ${theme.surface}/80 backdrop-blur-sm text-${theme.accent}-400 shadow-lg`}
             whileTap={{ scale: 0.9 }}
             title="Go to Home Page"
           >
             <Home size={20} />
-          </motion.a>
+          </motion.button>
           {/* Menu Toggle for Mobile TOC */}
           <motion.button
             onClick={() => setIsTocOpen(!isTocOpen)}
@@ -537,6 +620,7 @@ const LearnPage = () => {
           </motion.button>
         </div>
 
+        {/* ... (Mobile TOC AnimatePresence - same as before) ... */}
         <AnimatePresence>
           {isTocOpen && (
             <motion.div
@@ -544,7 +628,7 @@ const LearnPage = () => {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className={`lg:hidden fixed inset-0 ${theme.surface} z-40 p-6 pt-16 overflow-y-auto`}
+              className={`lg:hidden fixed inset-0 ${theme.surface} z-40 p-6 pt-20 overflow-y-auto`}
             >
               <h3 className={`text-md font-semibold mb-4 ${theme.textPrimary}`}>
                 Navigation
@@ -569,44 +653,43 @@ const LearnPage = () => {
           )}
         </AnimatePresence>
 
-        <main ref={mainContentRef} className="relative z-10">
+        <main
+          ref={mainContentRef}
+          className="relative z-10 pt-10 -mt-10 md:pt-20"
+        >
+          {" "}
           <header className="min-h-screen flex flex-col items-center justify-center text-center px-4 relative">
             <div className="absolute inset-0 pointer-events-none">
               <div
                 className={`absolute inset-0 bg-gradient-to-br from-${theme.accent}-500/5 via-transparent to-transparent`}
               ></div>
             </div>
-            <div className="relative z-10">
+            <div className="relative z-10 -mt-32">
               <h1
-                className={`text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-extrabold ${theme.textPrimary} tracking-tighter leading-none sm:leading-tight md:leading-tight lg:leading-tight xl:leading-tight`}
+                className={`text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl 
+                     font-extrabold tracking-tighter leading-none 
+                     sm:leading-tight md:leading-tight lg:leading-tight xl:leading-tight 
+                     ${theme.textPrimary}`}
               >
-                <span
-                  className={`animate-main-title-line block overflow-hidden bg-clip-text bg-gradient-to-r from-${theme.accent}-400 via-${theme.accentSecondary}-400 to-${theme.accentTertiary}-400`}
-                >
-                  <span className="inline-block">Learn</span>
-                </span>
+                {/* Line 1: "Learn" or "Explore" - WITH GRADIENT */}
                 <span className="animate-main-title-line block overflow-hidden">
-                  <span className="inline-block">Neural</span>
-                </span>
-                <span className="animate-main-title-line block overflow-hidden">
-                  <span className="inline-block">Networks</span>
+                  <span
+                    className={`inline-block bg-clip-text text-transparent 
+                         bg-gradient-to-r from-${theme.accent}-400 via-${theme.accentSecondary}-400 to-${theme.accentTertiary}-400 
+                         brightness-125 saturate-150`}
+                  >
+                    Learn
+                  </span>
                 </span>
               </h1>
-              <p
-                className={`hero-subtitle-word text-lg md:text-xl max-w-2xl mx-auto mb-10 ${theme.textSecondary}`}
-              >
-                {splitTextToSpans(
-                  "Explore a custom-coded neural network engine and the full-stack application that brings machine learning fundamentals to life."
-                )}
-              </p>
             </div>
             <button
-              onClick={() => handleTocClick("introduction")} // Scroll to first content section
-              className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center text-slate-400 hover:text-sky-300 transition-colors z-10 cursor-pointer group"
+              onClick={() => handleTocClick("introduction")}
+              className="hero-scroll-indicator absolute bottom-6 mb-24 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center text-slate-400 hover:text-sky-300 transition-colors z-10 cursor-pointer group"
               title="Discover More"
             >
               <span
-                className={`text-xs mb-1 -mt-10 group-hover:text-${theme.accent}-300 transition-colors`}
+                className={`text-xs mb-1 group-hover:text-${theme.accent}-300 transition-colors`}
               >
                 Begin Exploration
               </span>
@@ -616,8 +699,6 @@ const LearnPage = () => {
               />
             </button>
           </header>
-
-          {/* Content Sections */}
           <SectionWrapper
             id="introduction"
             title="Project Overview"
@@ -641,7 +722,6 @@ const LearnPage = () => {
               What sets this project apart is its commitment to fundamentals.
             </p>
           </SectionWrapper>
-
           <SectionWrapper
             id="core-engine"
             title="Custom NN Engine"
@@ -693,7 +773,6 @@ const LearnPage = () => {
               </PulsatingButton>
             </p>
           </SectionWrapper>
-
           <SectionWrapper
             id="fullstack-architecture"
             title="Fullstack Architecture"
@@ -733,7 +812,6 @@ const LearnPage = () => {
               Bridging backend algorithms with intuitive frontend experiences.
             </p>
           </SectionWrapper>
-
           <SectionWrapper
             id="training-visualization"
             title="Training Visualization"
@@ -758,7 +836,6 @@ const LearnPage = () => {
               Compare training runs of the same model with the "rerun" feature.
             </p>
           </SectionWrapper>
-
           <SectionWrapper
             id="educational-focus"
             title="Educational Platform"
@@ -820,7 +897,6 @@ const LearnPage = () => {
               </PulsatingButton>
             </p>
           </SectionWrapper>
-
           <SectionWrapper
             id="why-it-matters"
             title="Why It Matters"
@@ -864,7 +940,6 @@ const LearnPage = () => {
               Demonstrates profound grasp of ML fundamentals.
             </p>
           </SectionWrapper>
-
           <SectionWrapper
             id="explore-further"
             title="Explore Further"
@@ -889,7 +964,6 @@ const LearnPage = () => {
               </PulsatingButton>
             </div>
           </SectionWrapper>
-
           <footer
             className={`py-10 text-center border-t border-slate-800/50 ${theme.textMuted}`}
           >
@@ -909,5 +983,3 @@ const LearnPage = () => {
 };
 
 export default LearnPage;
-
-// --- END OF FILE LearnPage.jsx ---

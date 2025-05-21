@@ -133,10 +133,11 @@ const CTASection = () => {
         <motion.div variants={itemVariants}>
           <motion.button
             onClick={() => navigate("/build")}
-            className={`px-10 py-4 rounded-xl bg-gradient-to-r from-${theme.accent}-500 to-${theme.accent}-600 ${theme.textPrimary} font-semibold text-lg 
-                        hover:from-${theme.accent}-400 hover:to-${theme.accent}-500 transition-all duration-300 ease-out
-                        shadow-2xl hover:shadow-${theme.accent}-500/40
-                        flex items-center justify-center gap-2.5 group mx-auto`}
+            className={`px-10 py-4 rounded-xl bg-transparent 
+                font-semibold text-lg 
+                transition-all duration-300 ease-out
+                shadow-2xl hover:shadow-emerald-400/30
+                flex items-center justify-center group mx-auto`}
             whileHover={{
               scale: 1.05,
               y: -4,
@@ -144,11 +145,13 @@ const CTASection = () => {
             }}
             whileTap={{ scale: 0.95 }}
           >
-            Begin Creating
-            <ArrowRight
-              size={20}
-              className="transition-transform duration-250 group-hover:translate-x-1.5" // More pronounced arrow movement
-            />
+            <span className="inline-flex items-center gap-2.5 bg-gradient-to-r from-sky-400 via-rose-400 to-emerald-300 saturate-150 bg-clip-text text-transparent">
+              Begin Creating
+              <ArrowRight
+                size={20}
+                className="transition-transform text-white duration-250 group-hover:translate-x-1.5"
+              />
+            </span>
           </motion.button>
         </motion.div>
       </div>

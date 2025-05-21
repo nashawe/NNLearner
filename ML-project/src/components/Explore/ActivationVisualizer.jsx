@@ -113,7 +113,7 @@ function activate(name, x) {
     case "ReLU":
       return Math.max(0, x);
     case "Leaky ReLU":
-      return x >= 0 ? x : 0.01 * x;
+      return x >= 0 ? x : 0.03 * x;
     case "GELU":
       return geluApprox(x);
     default:

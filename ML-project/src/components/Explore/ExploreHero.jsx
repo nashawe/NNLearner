@@ -1,198 +1,234 @@
 // src/components/Explore/ExploreHero.jsx
 import React, { useRef, useLayoutEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom"; // Added useNavigate and useLocation
 import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { motion } from "framer-motion";
-import { ChevronDown, SearchCode, Orbit } from "lucide-react"; // SearchCode for exploration, Orbit for an abstract feel
+import { ScrollToPlugin } from "gsap/ScrollToPlugin";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { ChevronDown, Waypoints, Orbit, BookOpen, Blocks } from "lucide-react";
 
-if (!ScrollTrigger.isRegistered) {
-  gsap.registerPlugin(ScrollTrigger);
+if (!ScrollToPlugin.isRegistered) {
+  gsap.registerPlugin(ScrollToPlugin);
 }
 
+const navLinks = [
+  { label: "Learn", path: "/learn", Icon: BookOpen },
+  { label: "Build", path: "/build", Icon: Blocks },
+  { label: "Explore", path: "/explore", Icon: Waypoints },
+];
+
 const theme = {
-  bg: "bg-slate-950", // Should be inherited from ExplorePage
+  bg: "bg-slate-950", // Base background for the section
   textPrimary: "text-slate-50",
   textSecondary: "text-slate-300",
   accent: "sky",
   accentSecondary: "emerald",
   accentTertiary: "rose",
-};
-
-// Helper to split text for GSAP animation
-const splitTextForGSAP = (
-  text,
-  wrapperClass = "char-wrapper",
-  innerClass = "char"
-) => {
-  return text.split("").map((char, index) => (
-    <span
-      key={index}
-      className={wrapperClass}
-      style={{ display: "inline-block", overflow: "hidden" }}
-    >
-      <span className={innerClass} style={{ display: "inline-block" }}>
-        {char === " " ? "\u00A0" : char}
-      </span>
-    </span>
-  ));
+  bgIconColor: "text-sky-900", // Darker sky for Waypoints background
+  // Navbar specific theme properties
+  navbarBg: "bg-slate-900/60 backdrop-blur-lg", // More blur, slightly more opacity
+  navbarText: "text-slate-300", // Default nav link text
+  navbarHoverText: "text-sky-300", // Hover text color
+  navbarActiveText: "text-sky-300 font-semibold", // Active link text (e.g., sky color and bold)
 };
 
 export default function ExploreHero() {
-  const sectionRef = useRef(null); // For the whole section, used as ScrollTrigger trigger
-  const contentWrapperRef = useRef(null); // For parallaxing the main content
-  const titleRef = useRef(null); // For GSAP text animation
-  const subtitleRef = useRef(null); // For GSAP text animation
-  const linksContainerRef = useRef(null); // For GSAP stagger animation
-  const scrollIndicatorRef = useRef(null);
+  const heroRef = useRef(null);
+  const navigate = useNavigate(); // Initialize useNavigate
+  const location = useLocation(); // Initialize useLocation for active link styling
+
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+
+  const contentY = useTransform(scrollYProgress, [0, 1], ["0%", "45%"]);
+  const contentOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.7, 0.9],
+    [1, 1, 0]
+  );
+  const bgIconScale = useTransform(scrollYProgress, [0, 0.6, 1], [1, 1.5, 0.5]);
+  const bgIconOpacity = useTransform(
+    scrollYProgress,
+    [0, 0.7, 1],
+    [0.06, 0.1, 0]
+  ); // Even more subtle
+  const bgIconRotate = useTransform(scrollYProgress, [0, 1], [0, -35]);
+  const smallOrbit1Y = useTransform(scrollYProgress, [0, 1], ["0%", "70%"]);
+  const smallOrbit2Y = useTransform(scrollYProgress, [0, 1], ["0%", "90%"]);
 
   useLayoutEffect(() => {
-    const ctx = gsap.context(() => {
-      // Entrance Animation Timeline
-      const tl = gsap.timeline({ delay: 0.3 });
+    const heroContent = heroRef.current?.querySelector(".explore-hero-content");
+    const scrollIndicator = heroRef.current?.querySelector(
+      ".explore-hero-scroll-indicator"
+    );
 
-      // Scroll-out animation for hero content: faster parallax and quicker fade
-      ScrollTrigger.create({
-        trigger: sectionRef.current,
-        start: "top top",
-        end: "bottom top",
-        scrub: 0.8, // Adjust scrub smoothness
-        animation: gsap.to(contentWrapperRef.current, {
-          yPercent: 50, // Increase parallax effect
-          opacity: 0,
-          scale: 0.85,
-          filter: "blur(10px)", // More pronounced blur on exit
-          ease: "power1.in", // Sharper exit ease
-        }),
-      });
-    }, sectionRef); // Scope GSAP context to the section
+    if (!heroContent || !scrollIndicator) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        heroContent.querySelectorAll(".animate-main-title-line .inline-block"),
+        { yPercent: 105, opacity: 0, skewY: 8, rotateX: -40 },
+        {
+          yPercent: 0,
+          opacity: 1,
+          skewY: 0,
+          rotateX: 0,
+          duration: 1,
+          stagger: 0.12,
+          delay: 0.5,
+          ease: "expo.out", // Start title a bit sooner
+        }
+      );
+      gsap.fromTo(
+        heroContent.querySelectorAll(".subtitle-word-anim"),
+        { y: 20, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.7,
+          stagger: 0.05,
+          delay: 1.0,
+          ease: "power2.out", // Subtitle after title starts
+        }
+      );
+      gsap.fromTo(
+        scrollIndicator,
+        { opacity: 0, y: -15 },
+        {
+          opacity: 1,
+          y: 0,
+          delay: 1.9,
+          duration: 1.2, // Scroll indicator last
+          repeat: -1,
+          yoyo: true,
+          ease: "power1.inOut",
+        }
+      );
+    }, heroRef);
+
     return () => ctx.revert();
   }, []);
 
   const scrollToAction = (id) => {
     const element = document.getElementById(id);
     if (element) {
-      // Smooth scroll to section (matching Explore.jsx ToC)
       gsap.to(window, {
-        duration: 1.2,
-        scrollTo: { y: element, offsetY: 80 },
+        duration: 1.3,
+        scrollTo: { y: element, offsetY: 70 }, // Increased offset for potentially taller nav
         ease: "power3.inOut",
       });
     }
   };
 
-  // Helper for subtitle word splitting specifically for GSAP
   const prepareSubtitleWords = (text) => {
     return text.split(" ").map((word, index) => (
-      <span key={index} className="word-wrapper inline-block overflow-hidden">
-        <span className="word inline-block">
+      <span key={index} className="subtitle-word-wrapper inline-block">
+        <span className="subtitle-word-anim inline-block">
           {word}
-          {index < text.split(" ").length - 1 ? "\u00A0" : ""} {/* Add space */}
+          {index < text.split(" ").length - 1 ? "\u00A0" : ""}
         </span>
       </span>
     ));
   };
+  // const titleLines = ["Explore", "Neural", "Networks"]; // No longer needed here, direct text in h1
+  // const MotionLink = motion(Link); // No longer needed here if buttons are navigate()
 
   return (
-    <section
-      ref={sectionRef}
-      id="explore-hero-target" // ID for ToC navigation
-      className={`${theme.bg} min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 relative overflow-hidden`}
+    <motion.section
+      ref={heroRef}
+      id="explore-hero-target"
+      className={`min-h-screen flex flex-col items-center justify-center text-center relative overflow-hidden px-4 pt-20 sm:pt-16 ${theme.bg}`}
+      style={{ opacity: contentOpacity }}
     >
-      {/* Abstract Animated Background Elements using Framer Motion */}
       <motion.div
-        className="absolute top-1/4 left-1/4 w-40 h-40 sm:w-56 sm:h-56 bg-gradient-to-br from-sky-700/30 to-emerald-700/30 rounded-full filter blur-3xl opacity-50"
-        animate={{
-          x: [-30, 30, -30],
-          y: [-20, 20, -20],
-          scale: [1, 1.2, 1],
-          rotate: [0, 20, 0],
-        }}
-        transition={{
-          duration: 25,
-          repeat: Infinity,
-          ease: "linear",
-          repeatType: "mirror",
-        }}
-      />
-      <motion.div
-        className="absolute bottom-1/4 right-1/4 w-48 h-48 sm:w-64 sm:h-64 bg-gradient-to-tl from-rose-700/30 to-violet-700/30 rounded-full filter blur-3xl opacity-40"
-        animate={{
-          x: [40, -40, 40],
-          y: [25, -25, 25],
-          scale: [1, 0.8, 1],
-          rotate: [0, -25, 0],
-        }}
-        transition={{
-          duration: 30,
-          repeat: Infinity,
-          ease: "linear",
-          repeatType: "mirror",
-          delay: 3,
-        }}
-      />
-      <motion.div
-        className="absolute top-10 right-10 pointer-events-none -z-0"
-        animate={{ y: [-10, 10, -10], rotate: [0, 5, -5, 0] }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: "easeInOut",
-          repeatType: "mirror",
+        className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10"
+        style={{
+          scale: bgIconScale,
+          opacity: bgIconOpacity,
+          rotate: bgIconRotate,
         }}
       >
-        <Orbit
-          size={100}
-          className="text-slate-700/50 opacity-60"
-          strokeWidth={0.5}
+        <Waypoints
+          size="90vh"
+          className={`${theme.bgIconColor} opacity-80`}
+          strokeWidth={0.06}
         />
       </motion.div>
 
-      <div
-        ref={contentWrapperRef}
-        className="max-w-4xl mx-auto text-center relative z-10 py-10"
+      <motion.div
+        style={{ y: smallOrbit1Y, x: "-25vw", rotate: scrollYProgress }} // rotate with scroll
+        className="absolute top-[15%] w-32 h-32 sm:w-48 sm:h-48 opacity-25"
+        animate={{ rotate: scrollYProgress ? undefined : 360 }} // fallback rotate if no scroll
+        transition={{ duration: 90, repeat: Infinity, ease: "linear" }}
       >
-        {" "}
-        {/* Added py-10 for some breathing room */}
+        <Orbit
+          size="100%"
+          className={`text-${theme.accent}-700/50`}
+          strokeWidth={0.3}
+        />
+      </motion.div>
+      <motion.div
+        style={{
+          y: smallOrbit2Y,
+          x: "25vw",
+          rotate: useTransform(scrollYProgress, (v) => v * -360),
+        }} // rotate other way
+        className="absolute bottom-[15%] w-40 h-40 sm:w-56 sm:h-56 opacity-20"
+        animate={{ rotate: scrollYProgress ? undefined : -360 }}
+        transition={{
+          duration: 110,
+          repeat: Infinity,
+          ease: "linear",
+          delay: 1.5,
+        }}
+      >
+        <Orbit
+          size="100%"
+          className={`text-${theme.accentSecondary}-700/40`}
+          strokeWidth={0.25}
+        />
+      </motion.div>
+
+      <motion.div
+        style={{ y: contentY }}
+        className="explore-hero-content relative z-10 max-w-4xl mx-auto"
+      >
         <h1
-          className={`text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-extrabold ${theme.textPrimary} tracking-tighter leading-none -mt-32 mb-8 sm:leading-tight md:leading-tight lg:leading-tight xl:leading-tight`}
+          className={`text-5xl sm:text-6xl md:text-7xl -mt-32 lg:text-8xl xl:text-9xl font-extrabold ${theme.textPrimary} tracking-tighter leading-none mb-6 sm:mb-8`}
         >
-          <span
-            className={`animate-main-title-line block overflow-hidden bg-clip-text bg-gradient-to-r from-${theme.accent}-400 via-${theme.accentSecondary}-400 to-${theme.accentTertiary}-900`}
-          >
-            <span className="inline-block">Explore</span>
-          </span>
           <span className="animate-main-title-line block overflow-hidden">
-            <span className="inline-block">Neural</span>
-          </span>
-          <span className="animate-main-title-line block overflow-hidden">
-            <span className="inline-block">Networks</span>
+            <span
+              className={`inline-block bg-clip-text text-transparent bg-gradient-to-r from-${theme.accent}-400 via-${theme.accentTertiary}-400 to-${theme.accentSecondary}-300 brightness-125 saturate-150`}
+            >
+              Explore
+            </span>
           </span>
         </h1>
         <p
-          ref={subtitleRef}
-          className={`text-md xs:text-lg sm:text-xl ${theme.textSecondary} mt-4 max-w-2xl mx-auto leading-relaxed`}
+          className={`text-md sm:text-lg md:text-xl ${theme.textSecondary} max-w-xl md:max-w-2xl mx-auto leading-relaxed`}
         >
           {prepareSubtitleWords(
-            "Uncover the foundational architectures, dynamic activation functions, and intricate anatomy of modern neural networks."
+            "Dive deep into the architectures, visualize activation dynamics, and dissect the anatomy of intelligent systems."
           )}
         </p>
-      </div>
-      <button
-        ref={scrollIndicatorRef}
-        onClick={() => scrollToAction("architectures-gallery")} // Scroll to first content section
-        className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center text-slate-400 hover:text-sky-300 transition-colors z-10 cursor-pointer group"
+      </motion.div>
+
+      <div
+        className="explore-hero-scroll-indicator absolute bottom-8 sm:bottom-10 flex flex-col items-center z-20 -mt-32 cursor-pointer group" // Increased z-index for scroll indicator
+        onClick={() => scrollToAction("architectures-gallery-section")}
         title="Discover More"
       >
         <span
-          className={`text-xs mb-1 group-hover:text-${theme.accent}-300 transition-colors`}
+          className={`text-xs mb-1.5 text-slate-400 group-hover:text-${theme.accent}-300 transition-colors`}
         >
           Begin Exploration
         </span>
         <ChevronDown
-          size={26}
-          className={`opacity-70 group-hover:opacity-90 transition-opacity`}
+          size={28}
+          className={`text-slate-500 group-hover:text-${theme.accent}-400 transition-colors`}
         />
-      </button>
-    </section>
+      </div>
+    </motion.section>
   );
 }

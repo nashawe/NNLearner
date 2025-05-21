@@ -67,7 +67,7 @@ export default function ProgressBar({ currentStep }) {
 
       {/* Home Button */}
       <motion.div
-        className="flex items-center mr-8"
+        className="flex items-center -ml-14"
         whileHover={{ scale: 1.15, y: -5 }}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
       >
