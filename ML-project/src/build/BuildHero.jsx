@@ -1,8 +1,10 @@
-// src/components/BuildPage/BuildHero.jsx (or your preferred path)
-import React, { useRef, useLayoutEffect } from "react";
-import { Link, useNavigate } from "react-router-dom"; // Added useNavigate
+// src/components/BuildPage/BuildHero.jsx
+import React, { useRef, useLayoutEffect, useState, useEffect } from "react"; // Added useState for isScrolled if we keep local navbar logic
+import { Link, useNavigate, useLocation } from "react-router-dom"; // Keep all three
 import { motion, useScroll, useTransform } from "framer-motion";
 import { gsap } from "gsap";
+// ScrollToPlugin might not be strictly needed if scrollToAction is removed or handled differently
+// import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import {
   Construction,
   PenTool,
@@ -10,23 +12,34 @@ import {
   BookOpen,
   Blocks,
   Waypoints,
-  CodeXml,
+  CodeXml, // For potential logo in navbar
 } from "lucide-react";
-import MainNavbar from "../components/Layout/MainNavbar";
 
+// if (!ScrollToPlugin.isRegistered) { // Only if scrollToAction using GSAP is kept
+//   gsap.registerPlugin(ScrollToPlugin);
+// }
+
+// Define theme locally or ensure it's consistent if imported from a shared location
 const theme = {
-  bg: "bg-slate-950",
+  bg: "bg-slate-950", // Assuming this is the desired background for this hero section
   textPrimary: "text-slate-50",
   textSecondary: "text-slate-300",
-  accent: "violet",
-  accentSecondary: "sky",
-  bgIconColor: "text-violet-900", // Darker violet for Construction icon
-  // Added navbar specific theme properties
-
-  navbarText: "text-slate-200",
-  navbarHoverText: "text-white",
-  navbarActiveText: "text-violet-300", // For active link if you implement that
+  accent: "violet", // Primary accent for "Build" page hero elements
+  accentSecondary: "sky", // For the tutorial button or other secondary actions
+  bgIconColor: "text-violet-900", // Darker violet for Construction icon background
+  // Navbar specific theme properties (if navbar is kept local here)
+  navbarSurface: "bg-slate-900",
+  navbarText: "text-slate-300",
+  navbarHoverText: "text-violet-300",
+  navbarActiveText: "text-violet-300 font-semibold",
 };
+
+// Navbar links if kept local (otherwise this would be from a shared source if AltNavbar is global)
+const navLinks = [
+  { label: "Learn", path: "/learn", Icon: BookOpen },
+  { label: "Build", path: "/build", Icon: Blocks },
+  { label: "Explore", path: "/explore", Icon: Waypoints },
+];
 
 const prepareSubtitleWords = (text) => {
   return text.split(" ").map((word, index) => (
@@ -38,22 +51,19 @@ const prepareSubtitleWords = (text) => {
     </span>
   ));
 };
-const navLinks = [
-  { label: "Learn", path: "/learn", Icon: BookOpen },
-  { label: "Build", path: "/build", Icon: Blocks },
-  { label: "Explore", path: "/explore", Icon: Waypoints },
-];
 
 export default function BuildHero() {
-  const [isScrolled, setIsScrolled] = React.useState(false); // For Navbar scroll effect
+  const [isScrolled, setIsScrolled] = useState(false); // For Navbar scroll effect
   const heroRef = useRef(null);
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
+  const location = useLocation(); // For active link styling
 
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
   });
 
+  // Parallax transforms
   const contentY = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
   const contentOpacity = useTransform(
     scrollYProgress,
@@ -68,11 +78,30 @@ export default function BuildHero() {
   );
   const bgIconRotate = useTransform(scrollYProgress, [0, 1], [0, -25]);
 
+  // Effect for navbar scroll state
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 30);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll(); // Initial check
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // GSAP animations for hero content
   useLayoutEffect(() => {
     const heroContent = heroRef.current?.querySelector(".build-hero-content");
-    if (!heroContent) return;
+    const navElement = heroRef.current?.querySelector(".build-hero-navbar"); // Added for navbar animation
+
+    if (!heroContent || !navElement) return;
 
     const ctx = gsap.context(() => {
+      // Navbar entrance animation
+      gsap.fromTo(
+        navElement,
+        { y: -80, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.7, delay: 0.2, ease: "power2.out" }
+      );
+
+      // Main title animation
       gsap.fromTo(
         heroContent.querySelectorAll(
           ".animate-main-title-line .title-text-span"
@@ -85,10 +114,11 @@ export default function BuildHero() {
           rotateX: 0,
           duration: 1,
           stagger: 0.15,
-          delay: 0.5,
+          delay: 0.6, // Delayed to start after navbar
           ease: "expo.out",
         }
       );
+      // Subtitle animation
       gsap.fromTo(
         heroContent.querySelectorAll(".subtitle-word-anim"),
         { y: 25, opacity: 0 },
@@ -97,10 +127,11 @@ export default function BuildHero() {
           opacity: 1,
           duration: 0.7,
           stagger: 0.04,
-          delay: 1.0,
+          delay: 1.1, // After title
           ease: "power2.out",
         }
       );
+      // Buttons container animation
       gsap.fromTo(
         heroContent.querySelector(".animate-buttons-container"),
         { y: 40, opacity: 0 },
@@ -108,7 +139,7 @@ export default function BuildHero() {
           y: 0,
           opacity: 1,
           duration: 0.9,
-          delay: 1.5,
+          delay: 1.6, // After subtitle
           ease: "power3.out",
         }
       );
@@ -116,32 +147,23 @@ export default function BuildHero() {
     return () => ctx.revert();
   }, []);
 
-  const titleLines = ["Build"];
   const MotionLink = motion(Link);
 
   return (
     <motion.section
       ref={heroRef}
       id="build-hero"
-      className={`min-h-screen flex flex-col items-center justify-center text-center relative overflow-hidden px-4 pt-12 sm:pt-16 ${theme.bg}`} // Reduced top padding a bit
+      className={`min-h-screen flex flex-col items-center justify-center text-center relative overflow-hidden px-4 pt-24 sm:pt-20 ${theme.bg}`}
       style={{ opacity: contentOpacity }}
     >
-      {/* Navbar - Positioned Top Left */}
-      {/* --- INTEGRATED NAVBAR --- */}
-      <motion.nav
-        initial={{ y: -80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{
-          duration: 0.2,
-          delay: 0.1,
-          ease: "easeOut",
-        }} // Slightly faster entrance
-        className={`w-full fixed top-4 right-0 z-50 flex items-center justify-between px-4 sm:px-6 md:px-10 py-3 transition-all duration-200 ease-in-out
+      {/* --- INTEGRATED NAVBAR specific to BuildHero --- */}
+      <nav // Changed from motion.nav if GSAP handles its entrance
+        className={`build-hero-navbar absolute top-0 left-0 w-full z-50 flex items-center justify-between px-4 sm:px-6 md:px-10 py-3 transition-all duration-200 ease-in-out opacity-0
                    ${
                      isScrolled
-                       ? `${theme.surface} shadow-xl bg-opacity-80 backdrop-blur-lg border-b border-slate-700/50`
+                       ? `${theme.navbarSurface} shadow-xl bg-opacity-80 backdrop-blur-lg border-b border-slate-700/50`
                        : "bg-transparent border-b border-transparent"
-                   }`}
+                   }`} // Starts with opacity-0 for GSAP
       >
         {/* Left Side: Logo/Project Name */}
         <motion.div
@@ -155,7 +177,8 @@ export default function BuildHero() {
           <span
             className={`text-xl font-bold ${theme.textPrimary} hidden sm:inline`}
           >
-            NN<span className={`text-${theme.accent}-400`}>Learner</span>
+            NN<span className={`text-${theme.accent}-400`}>Learner</span>{" "}
+            {/* Or your project name */}
           </span>
         </motion.div>
 
@@ -164,7 +187,7 @@ export default function BuildHero() {
           {navLinks.map(({ label, path, Icon }) => (
             <motion.button
               key={label}
-              onClick={() => navigate(path)} // CORRECTLY USE navigate
+              onClick={() => navigate(path)}
               className={`px-2.5 py-1.5 md:px-3 md:py-2 rounded-md text-xs sm:text-sm font-medium transition-all duration-200
                          ${
                            (location.pathname.startsWith(path) &&
@@ -175,9 +198,19 @@ export default function BuildHero() {
                          } 
                          focus:outline-none focus:ring-2 focus:ring-${
                            theme.accent
-                         }-500/70 focus:ring-offset-2 focus:ring-offset-slate-900`}
-              whileHover={{ y: -2, scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+                         }-500/70 
+                         focus:ring-offset-2 focus:ring-offset-${
+                           isScrolled ? "slate-900" : "slate-950"
+                         }`}
+              whileHover={{
+                y: -2,
+                scale: 1.03,
+                transition: { type: "spring", stiffness: 350, damping: 15 },
+              }}
+              whileTap={{
+                scale: 0.97,
+                transition: { type: "spring", stiffness: 400, damping: 20 },
+              }}
               title={`Go to ${label}`}
             >
               {Icon && (
@@ -187,12 +220,11 @@ export default function BuildHero() {
             </motion.button>
           ))}
         </div>
-      </motion.nav>
+      </nav>
       {/* --- END OF INTEGRATED NAVBAR --- */}
 
-      {/* Background Parallax Construction Icon */}
       <motion.div
-        className="absolute inset-0 flex items-center justify-center pointer-events-none -z-0" // Keep behind navbar
+        className="absolute inset-0 flex items-center justify-center pointer-events-none -z-0"
         style={{
           scale: bgIconScale,
           opacity: bgIconOpacity,
@@ -206,39 +238,30 @@ export default function BuildHero() {
         />
       </motion.div>
 
-      {/* Main Content with Parallax */}
       <motion.div
         style={{ y: contentY }}
-        className="build-hero-content relative z-10 max-w-4xl mx-auto mt-16 md:mt-0" // Added margin-top to push content below potential fixed navbar space
+        className="build-hero-content relative z-10 max-w-4xl mx-auto mt-16 md:mt-8" // Adjusted mt for navbar space
       >
         <h1
-          className={`text-5xl sm:text-6xl md:text-7xl -mt-28 lg:text-8xl font-extrabold ${theme.textPrimary} tracking-tighter leading-tight mb-6 sm:mb-8`}
+          className={`text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold ${theme.textPrimary} tracking-tighter leading-tight mb-6 sm:mb-8`}
         >
-          {titleLines.map((line, index) => (
-            <span
-              key={index}
-              className="animate-main-title-line block mb-2 sm:mb-2 md:mb-4 overflow-hidden"
-            >
-              <span
-                className={`title-text-span inline-block bg-clip-text text-transparent bg-gradient-to-r from-violet-400 via-sky-400 to-emerald-400 brightness-125 saturate-150`}
-              >
-                {line}
-              </span>
-            </span>
-          ))}
+          <span
+            className={`title-text-span inline-block bg-clip-text text-transparent bg-gradient-to-r from-violet-400 via-sky-400 to-emerald-400 brightness-125 saturate-150`}
+          >
+            Build
+          </span>
         </h1>
         <p
           className={`text-md sm:text-lg md:text-xl ${theme.textSecondary} max-w-lg md:max-w-xl mx-auto leading-relaxed mb-10 sm:mb-12`}
         >
           {prepareSubtitleWords(
-            "Shape the future of intelligence. Start by designing your neural network from the ground up, or learn the ropes with our comprehensive tutorial."
+            "Shape the future of intelligence. Design your neural network architecture from the ground up or jumpstart with our comprehensive tutorials."
           )}
         </p>
 
-        {/* Buttons Container */}
         <div className="animate-buttons-container flex flex-col sm:flex-row sm:items-stretch sm:justify-center gap-4 sm:gap-6">
           <MotionLink
-            to="/build/design"
+            to="/build/mode-selection" // Corrected path to the new selection page
             whileHover={{
               scale: 1.05,
               y: -4,
@@ -249,9 +272,8 @@ export default function BuildHero() {
             className={`w-full sm:w-auto bg-gradient-to-r from-${theme.accent}-600 to-${theme.accent}-500 hover:from-${theme.accent}-500 hover:to-${theme.accent}-400 text-white font-semibold text-base sm:text-lg py-3.5 px-8 sm:py-4 sm:px-10 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 ease-out flex items-center justify-center gap-2.5 transform`}
           >
             <PenTool size={22} strokeWidth={2} />
-            Create Architecture
+            Start Building {/* Changed text to be more general */}
           </MotionLink>
-
           <MotionLink
             to="/tutorial"
             whileHover={{
@@ -268,7 +290,7 @@ export default function BuildHero() {
           </MotionLink>
         </div>
       </motion.div>
-      {/* No scroll down indicator in this hero, buttons are primary CTA */}
+      {/* No scroll down indicator in this hero if buttons are primary CTA */}
     </motion.section>
   );
 }

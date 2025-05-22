@@ -1,4 +1,4 @@
-// src/components/TrainingPage/TrainingInsights.jsx
+// src/components/TrainingPage/TrainingInsights_revamped.jsx
 import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
@@ -7,12 +7,12 @@ import {
   AlertTriangle,
   CheckCircle,
   TrendingUp,
-  TrendingDown,
   Zap,
-  Layers as LayersIcon,
-  Cpu,
-  Brain,
   Activity,
+  Sparkles,
+  Brain,
+  Gauge,
+  Settings2,
 } from "lucide-react";
 
 const theme = {
@@ -23,19 +23,24 @@ const theme = {
   accentNeutral: "sky",
   accentWarning: "amber",
   accentCritical: "rose",
-  accentSuggestion: "amber",
+  accentSuggestion: "amber", // Or a different color for suggestions like 'violet' or 'teal'
   card: "bg-slate-800/70 backdrop-blur-md border border-slate-700/50",
   divider: "border-slate-700",
 };
 
-// Corrected and Enhanced Analysis Function
-function getAdvancedTrainingSummary(history, settings, layersFromArchitecture) {
+// REVAMPED Analysis Function
+function getAdvancedTrainingSummary_revamped(
+  history,
+  settings,
+  layersFromArchitecture
+) {
   if (!history || !history.loss?.length || !history.accuracy?.length) {
     return {
       title: "Analysis Pending",
       points: [
         {
           type: "neutral",
+          icon: Info,
           text: "Training data is incomplete or not yet available.",
         },
       ],
@@ -44,15 +49,15 @@ function getAdvancedTrainingSummary(history, settings, layersFromArchitecture) {
     };
   }
 
-  const points = []; // For observations
-  const suggestions = []; // For actionable advice
-  let overallSentiment = "neutral";
+  const points = [];
+  const suggestions = [];
+  let overallSentiment = "neutral"; // Will be positive, warning, critical
 
   const lossCurve = history.loss;
   const accuracyCurve = history.accuracy;
   const lrCurve = history.learning_rate || [];
   const numEpochsRun = lossCurve.length;
-  const targetEpochs = settings.epochs;
+  const targetEpochs = settings.epochs || numEpochsRun; // Ensure targetEpochs is defined
 
   const initialLoss = lossCurve[0];
   const finalLoss = lossCurve[numEpochsRun - 1];
@@ -64,332 +69,319 @@ function getAdvancedTrainingSummary(history, settings, layersFromArchitecture) {
   const maxAccuracy = Math.max(...accuracyCurve) * 100;
   const maxAccuracyEpoch = accuracyCurve.indexOf(maxAccuracy / 100) + 1;
 
-  // Calculate averages for plateau detection (ensure enough data points)
-  const lastChunkSize = Math.max(5, Math.floor(numEpochsRun * 0.1));
-  let avgLossLastChunk = finalLoss;
-  if (lossCurve.length >= lastChunkSize) {
-    avgLossLastChunk =
-      lossCurve.slice(-lastChunkSize).reduce((a, b) => a + b, 0) /
-      lastChunkSize;
-  }
-  let avgLossPrevChunk = initialLoss;
-  if (lossCurve.length >= lastChunkSize * 2) {
-    avgLossPrevChunk =
-      lossCurve
-        .slice(-lastChunkSize * 2, -lastChunkSize)
-        .reduce((a, b) => a + b, 0) / lastChunkSize;
-  }
+  const isPerfectAccuracy = finalAccuracy >= 99.9;
+  const isHighAccuracy = finalAccuracy >= 95;
+  const isGoodAccuracy = finalAccuracy >= 80;
+  const isModerateAccuracy = finalAccuracy >= 60;
 
-  const significantImprovementEpoch =
-    accuracyCurve.findIndex(
-      (acc) =>
-        acc * 100 >= initialAccuracy + (maxAccuracy - initialAccuracy) * 0.8
-    ) + 1 || numEpochsRun;
-
-  // --- Base Observations ---
-  points.push({
-    type: "neutral",
-    text: `Trained for ${numEpochsRun} epochs (target: ${targetEpochs}).`,
-  });
-  points.push({
-    type: "neutral",
-    text: `Final Loss: ${finalLoss.toFixed(4)} (best was ${minLoss.toFixed(
-      4
-    )} at epoch ${minLossEpoch}).`,
-  });
-  points.push({
-    type: "neutral",
-    text: `Final Accuracy: ${finalAccuracy.toFixed(
-      2
-    )}% (best was ${maxAccuracy.toFixed(2)}% at epoch ${maxAccuracyEpoch}).`,
-  });
-
-  // --- Sentiment & Core Performance Analysis ---
-  if (finalAccuracy >= 98) {
+  // --- Overall Performance Sentiment ---
+  if (isPerfectAccuracy) {
+    overallSentiment = "positive";
     points.push({
       type: "positive",
-      text: "Exceptional training accuracy! The model has learned the training data patterns extremely well.",
+      icon: Sparkles,
+      text: `Achieved exceptional training accuracy of ${finalAccuracy.toFixed(
+        2
+      )}%. The model has mastered the training data.`,
     });
+  } else if (isHighAccuracy) {
     overallSentiment = "positive";
-  } else if (finalAccuracy >= 90) {
     points.push({
       type: "positive",
-      text: "High training accuracy achieved, indicating effective learning.",
+      icon: CheckCircle,
+      text: `Reached high training accuracy of ${finalAccuracy.toFixed(
+        2
+      )}%, indicating strong learning.`,
     });
-    overallSentiment = "positive";
-  } else if (finalAccuracy >= 75) {
+  } else if (isGoodAccuracy) {
+    overallSentiment = "neutral"; // Could be positive if target isn't perfection
     points.push({
       type: "neutral",
-      text: "Good training accuracy. Further improvements might be possible with fine-tuning.",
+      icon: Info,
+      text: `Good training accuracy (${finalAccuracy.toFixed(
+        2
+      )}%) achieved. Further fine-tuning could yield improvements.`,
     });
-  } else if (finalAccuracy >= 50) {
+  } else if (isModerateAccuracy) {
+    overallSentiment = "warning";
     points.push({
       type: "warning",
-      text: "Moderate training accuracy. The model shows some learning but may benefit from significant adjustments.",
+      icon: AlertTriangle,
+      text: `Moderate training accuracy (${finalAccuracy.toFixed(
+        2
+      )}%). The model shows some learning but may need significant adjustments.`,
     });
-    overallSentiment = "warning";
   } else {
+    overallSentiment = "critical";
     points.push({
       type: "critical",
-      text: "Low training accuracy suggests the model struggled significantly with the training patterns.",
+      icon: AlertTriangle,
+      text: `Low training accuracy (${finalAccuracy.toFixed(
+        2
+      )}%) suggests the model struggled significantly.`,
     });
     suggestions.push(
-      "Urgently review: data quality, model complexity vs. data complexity, learning rate, and label correctness."
+      "Urgently review: Data quality & normalization, model architecture complexity vs. data, learning rate, loss function choice, and label correctness."
     );
-    overallSentiment = "critical";
   }
 
-  // --- Convergence Speed Analysis ---
-  if (numEpochsRun > 10) {
-    // Only if enough epochs
-    if (significantImprovementEpoch < targetEpochs * 0.3 && targetEpochs > 20) {
+  // --- Convergence Speed & Efficiency ---
+  if (numEpochsRun > 5) {
+    const quickConvergenceEpochThreshold = Math.max(10, targetEpochs * 0.35);
+    const slowConvergenceEpochThreshold = targetEpochs * 0.75;
+
+    if (
+      maxAccuracyEpoch < quickConvergenceEpochThreshold &&
+      numEpochsRun >= quickConvergenceEpochThreshold
+    ) {
       points.push({
-        type: "neutral",
-        text: `Rapid Convergence: Achieved 80% of total accuracy improvement by epoch ${significantImprovementEpoch}.`,
+        type: "positive",
+        icon: TrendingUp,
+        text: `Rapid Convergence: Peak accuracy of ${maxAccuracy.toFixed(
+          2
+        )}% was achieved quickly by epoch ${maxAccuracyEpoch}.`,
       });
-      if (finalAccuracy > 95) {
+      if (isHighAccuracy) {
         suggestions.push(
-          "Consider if fewer epochs could yield similar results for faster iterations, or explore early stopping."
+          "Given the rapid convergence, consider if fewer epochs or an early stopping mechanism could save training time in future iterations while maintaining high performance."
         );
       }
     } else if (
-      significantImprovementEpoch > targetEpochs * 0.8 &&
-      targetEpochs > 20 &&
-      finalAccuracy < 90
+      maxAccuracyEpoch > slowConvergenceEpochThreshold &&
+      !isHighAccuracy &&
+      numEpochsRun > 10
     ) {
       points.push({
         type: "warning",
-        text: "Slow Convergence: The model took a relatively long time to reach its peak performance.",
+        icon: TrendingUp, // TrendingUp but with a warning context
+        text: `Slow Convergence: Reaching peak accuracy took a considerable number of epochs (${maxAccuracyEpoch}/${numEpochsRun}).`,
       });
       suggestions.push(
-        "A higher initial learning rate (if stable and data is normalized) or a more adaptive optimizer might accelerate learning."
+        "If learning speed is a concern, explore: a slightly higher (but stable) initial learning rate, a more adaptive optimizer, or ensuring data is optimally preprocessed."
       );
-    } else if (numEpochsRun > 5) {
-      // Default if not fitting above categories
+    } else {
       points.push({
         type: "neutral",
-        text: "Learning progression appears to have been steady.",
+        icon: Activity,
+        text: `Learning progressed steadily, reaching peak accuracy at epoch ${maxAccuracyEpoch} and final accuracy of ${finalAccuracy.toFixed(
+          2
+        )}%.`,
       });
+    }
+
+    // Over-training / Post-convergence behavior
+    if (
+      maxAccuracyEpoch < numEpochsRun * 0.8 &&
+      numEpochsRun - maxAccuracyEpoch > Math.max(10, targetEpochs * 0.2) &&
+      isHighAccuracy
+    ) {
+      const lossAtMaxAccuracy = lossCurve[maxAccuracyEpoch - 1];
+      if (finalLoss < lossAtMaxAccuracy * 0.75 && !settings.useDropout) {
+        // Loss significantly dropped after max accuracy
+        points.push({
+          type: "neutral", // It's an observation, could be a warning for overfitting
+          icon: Info,
+          text: `Post-Peak Optimization: Loss continued to decrease substantially after peak accuracy was hit at epoch ${maxAccuracyEpoch}.`,
+        });
+        suggestions.push(
+          "While strong training set optimization is good, ensure robust generalization on unseen data. Consider enabling dropout or using a validation set to monitor for overfitting."
+        );
+      } else {
+        points.push({
+          type: "positive",
+          icon: CheckCircle,
+          text: `Stable Performance: Model maintained high accuracy after reaching its peak around epoch ${maxAccuracyEpoch}.`,
+        });
+      }
     }
   }
 
-  // --- Loss Reduction & Plateau Analysis ---
+  // --- Loss Analysis ---
+  points.push({
+    type: "neutral",
+    icon: Gauge,
+    text: `Loss started at ${initialLoss.toFixed(
+      4
+    )} and ended at ${finalLoss.toFixed(4)} (min: ${minLoss.toFixed(
+      4
+    )} at epoch ${minLossEpoch}).`,
+  });
+
   const lossReductionRatio =
-    initialLoss > 0
+    initialLoss > 1e-9
       ? (initialLoss - finalLoss) / initialLoss
       : finalLoss === 0
       ? 1
       : 0;
-  if (lossReductionRatio > 0.75) {
-    points.push({
-      type: "positive",
-      text: "Loss decreased substantially (over 75%), indicating effective optimization.",
-    });
-  } else if (
-    lossReductionRatio < 0.15 &&
-    finalLoss > 0.2 &&
-    numEpochsRun > 10
+
+  if (
+    lossReductionRatio < 0.1 &&
+    finalLoss > 0.1 &&
+    numEpochsRun > 10 &&
+    overallSentiment !== "critical"
   ) {
     points.push({
       type: "warning",
-      text: "Loss did not decrease substantially. Model might be underfitting or learning very slowly.",
+      icon: AlertTriangle,
+      text: "Limited Loss Reduction: The loss did not decrease substantially during training.",
     });
-    if (overallSentiment === "neutral") overallSentiment = "warning"; // Elevate sentiment
+    if (overallSentiment === "neutral") overallSentiment = "warning";
     suggestions.push(
-      "Investigate: Learning rate (too low/high?); Model capacity (too simple?); Weight initialization; Data preprocessing."
+      "Investigate: Learning rate (too low/high?); Model capacity (too simple for data?); Weight initialization; Data normalization and quality."
     );
-  } else if (
-    lossReductionRatio <= 0 &&
-    numEpochsRun > 5 &&
-    initialLoss > 0.001
-  ) {
-    // Loss increased or stayed same
+  } else if (lossReductionRatio < 0 && initialLoss > 1e-5 && numEpochsRun > 3) {
     points.push({
       type: "critical",
-      text: "Critical: Training loss did not decrease or may have increased. This indicates a serious problem.",
+      icon: AlertTriangle,
+      text: "Critical: Training loss increased or stagnated. This indicates a serious problem.",
     });
-    suggestions.push(
-      "Check for: Exploding gradients (reduce LR drastically!); Incorrect loss function for the task; Severe data issues (unnormalized, incorrect labels)."
-    );
     overallSentiment = "critical";
+    suggestions.push(
+      "Check for: Exploding gradients (reduce LR drastically, use gradient clipping if possible); Incorrect loss function for the task; Severe data issues (unnormalized, NaN values, incorrect labels)."
+    );
   }
 
-  if (numEpochsRun > 20 && avgLossPrevChunk > 0) {
-    // Plateau check
-    const changeInLastChunks = Math.abs(avgLossLastChunk - avgLossPrevChunk);
-    if (
-      changeInLastChunks < Math.max(minLoss, 0.001) * 0.02 &&
-      finalLoss > 0.02 &&
-      numEpochsRun > targetEpochs * 0.4
-    ) {
-      points.push({
-        type: "warning",
-        text: "Learning Plateau: Loss has stabilized with minimal improvement in later epochs.",
-      });
-      if (finalAccuracy < 95 && overallSentiment !== "critical") {
-        suggestions.push(
-          "If target accuracy isn't met, consider reducing learning rate (or use scheduler if off), trying a different optimizer, or exploring model architecture changes (if within parameter limits)."
-        );
+  // Plateau detection (more nuanced)
+  if (numEpochsRun > 20) {
+    const lastChunkSize = Math.max(5, Math.floor(numEpochsRun * 0.1));
+    if (lossCurve.length >= lastChunkSize * 2) {
+      const avgLossLastChunk =
+        lossCurve.slice(-lastChunkSize).reduce((a, b) => a + b, 0) /
+        lastChunkSize;
+      const avgLossPrevChunk =
+        lossCurve
+          .slice(-lastChunkSize * 2, -lastChunkSize)
+          .reduce((a, b) => a + b, 0) / lastChunkSize;
+      const relativeChange =
+        avgLossPrevChunk > 1e-9
+          ? Math.abs(avgLossLastChunk - avgLossPrevChunk) / avgLossPrevChunk
+          : 0;
+
+      if (
+        relativeChange < 0.02 && // Less than 2% change
+        numEpochsRun > targetEpochs * 0.5 &&
+        !isPerfectAccuracy // Only a concern if not yet perfect
+      ) {
+        points.push({
+          type: "warning",
+          icon: Info,
+          text: "Learning Plateau: Loss and accuracy showed minimal improvement in later epochs.",
+        });
+        if (overallSentiment !== "critical") {
+          suggestions.push(
+            "If target accuracy isn't met: Consider a learning rate adjustment (e.g., scheduler or manual reduction), trying a different optimizer, or carefully re-evaluating model architecture or data preprocessing."
+          );
+        }
       }
     }
   }
 
-  // --- Overfitting Hint (especially relevant since 100% accuracy is common) ---
-  if (
-    maxAccuracy >= 99.9 &&
-    finalLoss < 0.01 &&
-    maxAccuracyEpoch < numEpochsRun * 0.6 &&
-    numEpochsRun > 20
-  ) {
-    points.push({
-      type: "neutral",
-      text: "Model achieved near-perfect training accuracy very quickly and maintained it.",
-    });
-    // Check if loss continued to drop significantly after max accuracy was hit
-    const lossAfterMaxAccuracy = lossCurve.slice(maxAccuracyEpoch - 1); // -1 because epoch is 1-indexed
+  // --- Settings & Architecture Commentary ---
+  let modelDesc = "Model with ";
+  if (layersFromArchitecture && layersFromArchitecture.length > 0) {
+    const hiddenLayers = layersFromArchitecture.filter(
+      (l) => l.type === "hidden"
+    );
+    const numHidden = hiddenLayers.length;
+    modelDesc += `${numHidden} hidden layer(s)`;
+    if (numHidden > 0) {
+      modelDesc += ` (sizes: ${hiddenLayers
+        .map((l) => l.neurons)
+        .join(", ")}).`;
+    } else {
+      modelDesc += ".";
+    }
+    points.push({ type: "neutral", icon: Brain, text: modelDesc });
+
     if (
-      lossAfterMaxAccuracy.length > 5 &&
-      lossAfterMaxAccuracy[lossAfterMaxAccuracy.length - 1] <
-        lossAfterMaxAccuracy[0] * 0.5 &&
-      !settings.useDropout
+      numHidden === 0 &&
+      !isHighAccuracy &&
+      settings.mode_id !== 1 &&
+      settings.mode_id !== 3
     ) {
+      // mode_id 1 (Linear Regression) and 3 (Logistic Regression) are expected to be shallow
       suggestions.push(
-        "While 100% training accuracy is excellent, the loss continued to decrease significantly afterwards. This *could* indicate fitting to noise. Ensure robust generalization with a validation set or techniques like dropout if not already active."
+        "The current shallow architecture (no hidden layers) might be too simple for the dataset's complexity. Consider adding hidden layers if the task is non-linear."
+      );
+    } else if (
+      numHidden > 3 &&
+      isHighAccuracy &&
+      maxAccuracyEpoch > targetEpochs * 0.6
+    ) {
+      // Deep model, good accuracy, but took a while
+      suggestions.push(
+        "The deep architecture learned well. For faster iterations, you could explore if a slightly shallower or wider model (within limits) achieves similar results more quickly."
       );
     }
-  } else if (finalAccuracy >= 99) {
-    points.push({
-      type: "positive",
-      text: "Model has successfully learned the training dataset to a very high degree of accuracy.",
-    });
   }
 
-  // --- Underfitting Hint ---
-  if (
-    overallSentiment !== "critical" &&
-    finalAccuracy < 60 &&
-    finalLoss > 0.5 &&
-    numEpochsRun > targetEpochs * 0.5
-  ) {
-    points.push({
-      type: "warning",
-      text: "Potential Underfitting: Model performance is low despite significant training.",
-    });
-    suggestions.push(
-      "Try increasing model capacity (more neurons/layers within limits), using a more complex model mode, or ensuring data is clean and features are relevant."
-    );
-  }
-
-  // --- Settings Commentary ---
   if (settings.useLrScheduler && lrCurve.length > 1) {
-    if (lrCurve[numEpochsRun - 1] < lrCurve[0] * 0.9) {
-      points.push({
-        type: "neutral",
-        text: `Learning Rate Scheduler was active, reducing LR from ${lrCurve[0].toExponential(
-          1
-        )} to ${lrCurve[numEpochsRun - 1].toExponential(1)}.`,
-      });
-    } else {
-      points.push({
-        type: "neutral",
-        text: "Learning Rate Scheduler was enabled, but significant LR decay was not observed.",
-      });
-    }
+    const lrChangedSignificantly = lrCurve[numEpochsRun - 1] < lrCurve[0] * 0.8;
+    points.push({
+      type: "neutral",
+      icon: Settings2,
+      text: `Learning Rate Scheduler was active. Initial LR: ${lrCurve[0].toExponential(
+        1
+      )}, Final LR: ${lrCurve[numEpochsRun - 1].toExponential(1)}. ${
+        lrChangedSignificantly
+          ? "Effective decay observed."
+          : "Minimal decay observed."
+      }`,
+    });
   }
+
   if (settings.useDropout && settings.dropout > 0) {
     points.push({
       type: "positive",
+      icon: Settings2,
       text: `Dropout (${(settings.dropout * 100).toFixed(
         0
       )}%) was active, aiding model generalization.`,
     });
-  } else if (
-    finalAccuracy >= 99 &&
-    (!settings.useDropout || settings.dropout === 0)
-  ) {
+  } else if (isPerfectAccuracy) {
     suggestions.push(
-      "Excellent training accuracy! For robust performance on new data, consider enabling dropout if overfitting becomes a concern."
+      "Achieved perfect training accuracy. As a best practice for robust generalization to new data, consider enabling dropout in future experiments, especially with complex models or limited datasets."
     );
   }
 
-  // --- Architecture Specific Insights ---
-  if (layersFromArchitecture && layersFromArchitecture.length > 0) {
-    const inputLayer = layersFromArchitecture.find((l) => l.type === "input");
-    const hiddenLayers = layersFromArchitecture.filter(
-      (l) => l.type === "hidden"
-    );
-    const outputLayer = layersFromArchitecture.find((l) => l.type === "output");
-    const numHidden = hiddenLayers.length;
-    const firstHiddenSize = hiddenLayers[0]?.neurons;
-
-    if (numHidden === 0 && inputLayer && outputLayer) {
-      points.push({
-        type: "neutral",
-        text: "A shallow network (direct input to output, no hidden layers) was used. This is effective for linearly separable data.",
-      });
-      if (
-        finalAccuracy < 85 &&
-        overallSentiment !== "critical" &&
-        settings.mode_id !== 1 &&
-        settings.mode_id !== 3
-      ) {
-        // If not already a very simple mode
-        suggestions.push(
-          "For potentially more complex patterns, adding at least one hidden layer (respecting parameter limits) is strongly recommended."
-        );
-      }
-    } else if (numHidden > 0) {
-      let archDesc = `Model architecture: ${
-        inputLayer?.neurons || "N/A"
-      } (Input) → `;
-      hiddenLayers.forEach(
-        (l, i) => (archDesc += `${l.neurons}${i < numHidden - 1 ? " → " : ""}`)
-      );
-      archDesc += ` (Hidden x${numHidden}) → ${
-        outputLayer?.neurons || "N/A"
-      } (Output).`;
-      points.push({ type: "neutral", text: archDesc });
-    }
-    if (
-      numHidden > 3 &&
-      firstHiddenSize &&
-      firstHiddenSize < Math.max(16, (inputLayer?.neurons || 32) / 4) &&
-      finalAccuracy < 75
-    ) {
-      // If deep AND narrow relative to input
-      suggestions.push(
-        "The network is relatively deep with narrow hidden layers. If underfitting is observed, consider fewer, wider hidden layers or increasing neurons per layer (respecting parameter limits)."
-      );
-    }
-  }
-
-  // --- Concluding Title & Default Suggestion ---
+  // --- Final Title & Default Suggestions ---
   let title = "Training Analysis";
-  if (overallSentiment === "positive")
-    title = "Excellent Training Performance!";
+  if (overallSentiment === "positive" && isPerfectAccuracy)
+    title = "Optimal Training Performance Mastered!";
+  else if (overallSentiment === "positive")
+    title = "Strong Training Performance Achieved!";
   else if (overallSentiment === "warning")
-    title = "Training Review & Recommendations";
+    title = "Training Review: Observations & Recommendations";
   else if (overallSentiment === "critical")
     title = "Training Alert: Critical Issues Identified";
 
-  if (suggestions.length === 0 && overallSentiment === "positive") {
-    suggestions.push(
-      "Model performed exceptionally well on training data! Key next steps: evaluate on a separate test set to confirm generalization, and experiment with variations if desired."
-    );
-  } else if (suggestions.length === 0) {
-    suggestions.push(
-      "Analyze the graphs closely for detailed performance trends. Standard hyperparameter tuning (learning rate, optimizer, batch size) may yield further improvements."
-    );
+  if (suggestions.length === 0) {
+    if (isPerfectAccuracy) {
+      suggestions.push(
+        "Model mastered the training data! Key next steps: rigorously evaluate on a separate, unseen test set to confirm generalization. Experiment with more challenging datasets."
+      );
+    } else if (isHighAccuracy) {
+      suggestions.push(
+        "Excellent performance on the training set. Validate thoroughly on a test set. Consider minor hyperparameter tuning if aiming for perfection or faster convergence."
+      );
+    } else {
+      suggestions.push(
+        "Analyze graphs for detailed trends. Standard hyperparameter tuning (learning rate, optimizer, batch size, architecture) may yield improvements. Ensure data is clean and appropriate for the task."
+      );
+    }
   }
 
-  return { title, points, suggestions, overallSentiment };
+  // Remove duplicate suggestions (simple check)
+  const uniqueSuggestions = Array.from(new Set(suggestions));
+
+  return { title, points, suggestions: uniqueSuggestions, overallSentiment };
 }
 
-// The TrainingInsights React Component
+// The TrainingInsights React Component (Identical Structure to original)
 const TrainingInsights = ({ history, settings, layersFromArchitecture }) => {
   const { title, points, suggestions, overallSentiment } = useMemo(() => {
-    // Ensure settings and layersFromArchitecture are passed, even if empty, to avoid undefined errors
-    return getAdvancedTrainingSummary(
+    return getAdvancedTrainingSummary_revamped(
+      // Call the new function
       history,
       settings || {},
       layersFromArchitecture || []
@@ -398,7 +390,6 @@ const TrainingInsights = ({ history, settings, layersFromArchitecture }) => {
 
   if (!history) {
     return (
-      // Placeholder while history is null (e.g., initial load or error before history is set)
       <div
         className={`${theme.card} p-6 sm:p-8 rounded-2xl shadow-2xl mt-10 sm:mt-12 w-full text-center`}
       >
@@ -421,7 +412,7 @@ const TrainingInsights = ({ history, settings, layersFromArchitecture }) => {
     warning: (
       <AlertTriangle
         size={24}
-        className={`text-${theme.accentWarning || "amber"}-400`}
+        className={`text-${theme.accentWarning}-400`} // Tailwind JIT needs full class names
       />
     ),
     critical: (
@@ -430,7 +421,6 @@ const TrainingInsights = ({ history, settings, layersFromArchitecture }) => {
   };
 
   const itemVariants = (type) => ({
-    // Renamed from itemVariants in previous example to avoid conflict if copy-pasting
     hidden: {
       opacity: 0,
       x: type === "suggestion" ? 20 : -20,
@@ -453,16 +443,17 @@ const TrainingInsights = ({ history, settings, layersFromArchitecture }) => {
     <motion.div
       key={
         history
-          ? JSON.stringify(history.loss.slice(-1)) +
-            JSON.stringify(history.accuracy.slice(-1))
+          ? `insights-${history.loss.length}-${history.accuracy.slice(-1)[0]}`
           : "no-history-insights"
-      } // More robust key for re-animation
+      } // Slightly more robust key for re-animation on data change
       className={`${theme.card} p-6 sm:p-8 rounded-2xl shadow-2xl mt-10 sm:mt-12 w-full`}
       initial={{ opacity: 0, y: 50, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ delay: 0.1, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="flex items-start sm:items-center gap-3.5 mb-5 border-b ${theme.divider} pb-4">
+      <div
+        className={`flex items-start sm:items-center gap-3.5 mb-5 border-b ${theme.divider} pb-4`}
+      >
         {sentimentIconMap[overallSentiment] || (
           <Info size={24} className={`text-${theme.accentNeutral}-400`} />
         )}
@@ -485,27 +476,41 @@ const TrainingInsights = ({ history, settings, layersFromArchitecture }) => {
             >
               {points.map((pt, i) => (
                 <motion.li
-                  key={`obs-${i}`}
+                  key={`obs-${pt.text.slice(0, 15)}-${i}`} // More unique key
                   custom={i}
                   variants={itemVariants("observation")}
                   initial="hidden"
                   animate="visible"
                   className="flex items-start gap-2.5"
                 >
-                  <span
-                    className={`mt-1.5 w-2 h-2 rounded-full opacity-90 shrink-0
+                  {pt.icon ? (
+                    <pt.icon
+                      size={16}
+                      className={`mt-0.5 shrink-0 opacity-90
+                        ${
+                          pt.type === "positive"
+                            ? `text-${theme.accentPositive}-500`
+                            : pt.type === "warning"
+                            ? `text-${theme.accentWarning}-500`
+                            : pt.type === "critical"
+                            ? `text-${theme.accentCritical}-500`
+                            : `text-${theme.accentNeutral}-500`
+                        }`}
+                    />
+                  ) : (
+                    <span
+                      className={`mt-1.5 w-2 h-2 rounded-full opacity-90 shrink-0
                                         ${
                                           pt.type === "positive"
                                             ? `bg-${theme.accentPositive}-500`
                                             : pt.type === "warning"
-                                            ? `bg-${
-                                                theme.accentWarning || "amber"
-                                              }-500`
+                                            ? `bg-${theme.accentWarning}-500`
                                             : pt.type === "critical"
                                             ? `bg-${theme.accentCritical}-500`
                                             : `bg-${theme.accentNeutral}-500`
                                         }`}
-                  ></span>
+                    />
+                  )}
                   <span>{pt.text}</span>
                 </motion.li>
               ))}
@@ -516,11 +521,11 @@ const TrainingInsights = ({ history, settings, layersFromArchitecture }) => {
             </p>
           )}
         </div>
-        <div className="md:border-l md:pl-8 ${theme.divider} md:border-opacity-50">
+        <div
+          className={`md:border-l md:pl-8 ${theme.divider} md:border-opacity-50`}
+        >
           <h4
-            className={`text-lg font-medium text-${
-              theme.accentSuggestion || "amber"
-            }-400 mb-3 flex items-center gap-2`}
+            className={`text-lg font-medium text-${theme.accentSuggestion}-400 mb-3 flex items-center gap-2`}
           >
             <Lightbulb size={18} /> Potential Next Steps:
           </h4>
@@ -530,7 +535,7 @@ const TrainingInsights = ({ history, settings, layersFromArchitecture }) => {
             >
               {suggestions.map((sug, i) => (
                 <motion.li
-                  key={`sug-${i}`}
+                  key={`sug-${sug.slice(0, 15)}-${i}`} // More unique key
                   custom={i}
                   variants={itemVariants("suggestion")}
                   initial="hidden"
@@ -539,9 +544,7 @@ const TrainingInsights = ({ history, settings, layersFromArchitecture }) => {
                 >
                   <Zap
                     size={15}
-                    className={`mt-1 shrink-0 text-${
-                      theme.accentSuggestion || "amber"
-                    }-500 opacity-80`}
+                    className={`mt-1 shrink-0 text-${theme.accentSuggestion}-500 opacity-80`}
                   />
                   <span>{sug}</span>
                 </motion.li>

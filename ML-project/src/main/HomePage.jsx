@@ -2,7 +2,6 @@
 import React from "react";
 import { Blocks, Waypoints, BookOpen } from "lucide-react";
 
-import MainNavbar from "../components/Layout/MainNavbar";
 import Footer from "../components/Layout/Footer";
 import HeroSection from "../components/HomePage/HeroSection";
 import InfoHighlightSection from "../components/HomePage/InfoHighlightSection";
@@ -32,7 +31,6 @@ export default function homepage() {
     <div
       className={`${theme.bg} ${theme.textSecondary} font-sans overflow-x-hidden selection:bg-sky-500 selection:text-white`}
     >
-      <MainNavbar navLinks={navLinks} />
       <main className="relative z-10">
         <HeroSection />
         <InfoHighlightSection />

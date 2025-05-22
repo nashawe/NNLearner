@@ -172,7 +172,7 @@ const FeatureShowcase = () => {
               variants={cardVariants}
               className={`group relative p-6 sm:p-8 rounded-2xl ${theme.card} border border-slate-700/80 flex flex-col 
                           transform 
-                          hover:border-${feature.accentColorName}-500/80 hover:shadow-xl hover:shadow-${feature.accentColorName}-500/15
+                          hover:border-sky-900 hover:shadow-xl hover:shadow-${feature.accentColorName}-500/15
                           transition-all duration-250 ease-out`} // Tailwind transitions for border and shadow
               whileHover={cardHoverAnimation} // APPLYING THE COPIED HOVER ANIMATION LOGIC
               onClick={() => navigate(feature.path)}

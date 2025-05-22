@@ -7,14 +7,8 @@ import {
   UploadCloud,
   Save,
   FileText,
-  Info,
+  Lock,
 } from "lucide-react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-if (!ScrollTrigger.isRegistered) {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 const theme = {
   bg: "bg-slate-950",
@@ -28,28 +22,38 @@ const theme = {
   textSecondary: "text-slate-300",
   textMuted: "text-slate-400",
   accent: "sky",
+  accentRGB: "14, 165, 233", // For DarkFloatInputBase label active color
   accentSecondary: "emerald",
   divider: "border-slate-700",
+  disabledBg: "bg-slate-700/40",
+  disabledBorder: "border-slate-600/40",
+  disabledText: "text-slate-500 cursor-not-allowed",
 };
 
-// --- Custom Dark Themed Floating Input Components (FIXED for no placeholder reliance) ---
+// --- Custom Dark Themed Floating Input Components (Self-contained or common) ---
 const DarkFloatInputBase = ({
   label,
   id,
   value,
   children,
-  infoClick,
+  disabled = false,
   wrapperClassName = "",
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const hasValue =
     value !== undefined && value !== null && String(value).trim() !== "";
-
-  // Determine card background for label cutout effect - assuming cards use theme.cardAlt
-  const cardBgRgb = "15 23 42"; // Default to slate-800 equivalent if cardAlt is complex
+  // Assuming cards are on theme.cardAlt which is slate-800/70 over slate-950.
+  // For a consistent cutout, the label's backgroundColor should match the card's solid part or effective color.
+  // A simpler, more robust approach is a solid color from the card background if blur isn't critical for the label itself.
+  const labelBgColor = "rgb(30, 41, 59)"; // slate-800 solid equivalent, good for cards with theme.cardAlt (bg-slate-800/70)
+  // Change if your card background is different and the "cutout" effect matters.
 
   return (
-    <div className={`relative flex flex-col ${wrapperClassName}`}>
+    <div
+      className={`relative flex flex-col ${wrapperClassName} ${
+        disabled ? "opacity-70" : ""
+      }`}
+    >
       <motion.label
         htmlFor={id}
         animate={isFocused || hasValue ? "active" : "inactive"}
@@ -59,33 +63,36 @@ const DarkFloatInputBase = ({
             scale: 1,
             color: "rgb(100 116 139)",
             x: "0.8rem",
-          },
+          }, // slate-400
           active: {
             y: "-0.5rem",
             scale: 0.8,
-            color: `rgb(var(--color-${theme.accent}-rgb, 14 165 233))`,
+            color: `rgba(${theme.accentRGB}, 1)`,
             x: "0.6rem",
-            backgroundColor: `rgb(${cardBgRgb})`,
+            backgroundColor: labelBgColor,
             paddingLeft: "0.25rem",
             paddingRight: "0.25rem",
           },
         }}
-        initial={hasValue ? "active" : "inactive"} // Set initial based on value, no animation
+        initial={hasValue ? "active" : "inactive"}
         transition={{
           type: "spring",
           stiffness: 350,
           damping: 25,
           duration: 0.1,
         }}
-        className="absolute left-0 top-0 text-sm pointer-events-none origin-top-left z-10"
+        className={`absolute left-0 top-0 text-sm pointer-events-none origin-top-left z-10`}
       >
         {label}
       </motion.label>
       {React.cloneElement(children, {
-        onFocus: () => setIsFocused(true),
-        onBlur: () => setIsFocused(false),
+        onFocus: () => !disabled && setIsFocused(true),
+        onBlur: () => !disabled && setIsFocused(false),
         id: id,
-        className: `${children.props.className || ""} pt-5 pb-2.5 px-3.5`,
+        disabled: disabled,
+        className: `${children.props.className || ""} pt-5 pb-2.5 px-3.5 h-12 ${
+          disabled ? theme.disabledText : ""
+        }`,
       })}
     </div>
   );
@@ -96,24 +103,32 @@ const DarkFloatTextarea = ({
   id,
   value,
   setValue,
-  rows = 8,
+  rows = 3,
   className = "",
+  disabled = false,
 }) => {
+  // Defaulted rows to 3 for compactness
   return (
     <DarkFloatInputBase
       label={label}
       id={id}
       value={value}
       wrapperClassName={className}
+      disabled={disabled}
     >
       <textarea
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={(e) => !disabled && setValue(e.target.value)}
         rows={rows}
-        placeholder="" // REMOVED placeholder text
-        className={`peer block w-full border rounded-lg ${theme.inputBg} ${theme.inputBorder} ${theme.textPrimary} 
-                            hover:border-${theme.accent}-500/50 focus:${theme.inputFocusBorder} focus:ring-1 focus:ring-${theme.accent}-400 
-                            outline-none transition-colors text-sm scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent resize-y min-h-[100px]`}
+        placeholder=""
+        disabled={disabled}
+        className={`peer block w-full border rounded-lg min-h-[80px] 
+                    ${
+                      disabled
+                        ? `${theme.disabledBg} ${theme.disabledBorder} ${theme.disabledText}`
+                        : `${theme.inputBg} ${theme.inputBorder} ${theme.textPrimary} hover:border-${theme.accent}-500/50 focus:${theme.inputFocusBorder} focus:ring-1 focus:ring-${theme.accent}-400`
+                    }
+                    outline-none transition-colors text-sm scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent resize-y`}
       />
     </DarkFloatInputBase>
   );
@@ -126,6 +141,7 @@ const DarkFloatInput = ({
   setValue,
   type = "text",
   className = "",
+  disabled = false,
 }) => {
   return (
     <DarkFloatInputBase
@@ -133,36 +149,57 @@ const DarkFloatInput = ({
       id={id}
       value={value}
       wrapperClassName={className}
+      disabled={disabled}
     >
       <input
         type={type}
         value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="" // REMOVED placeholder text
-        className={`peer block w-full border rounded-lg ${theme.inputBg} ${theme.inputBorder} ${theme.textPrimary} 
-                            hover:border-${theme.accent}-500/50 focus:${theme.inputFocusBorder} focus:ring-1 focus:ring-${theme.accent}-400
-                            outline-none transition-colors text-sm`}
+        onChange={(e) => !disabled && setValue(e.target.value)}
+        placeholder=""
+        disabled={disabled}
+        className={`peer block w-full border rounded-lg 
+                    ${
+                      disabled
+                        ? `${theme.disabledBg} ${theme.disabledBorder} ${theme.disabledText}`
+                        : `${theme.inputBg} ${theme.inputBorder} ${theme.textPrimary} hover:border-${theme.accent}-500/50 focus:${theme.inputFocusBorder} focus:ring-1 focus:ring-${theme.accent}-400`
+                    }
+                    outline-none transition-colors text-sm`}
       />
     </DarkFloatInputBase>
   );
 };
 
-const DarkGlowToggle = ({ enabled, setEnabled, label }) => {
+const DarkGlowToggle = ({ enabled, setEnabled, label, disabled = false }) => {
   return (
-    <div className="flex flex-col mt-1">
+    <div
+      className={`flex flex-col mt-1 ${
+        disabled ? "opacity-60 cursor-not-allowed" : ""
+      }`}
+    >
+      {" "}
+      {/* Reduced opacity for disabled parent */}
       <div className="flex items-center justify-between mb-1">
-        <span className={`text-sm font-medium ${theme.textPrimary}`}>
+        <span
+          className={`text-sm font-medium ${
+            disabled ? theme.disabledText : theme.textPrimary
+          }`}
+        >
           {label}
         </span>
-        {/* InfoButton could be added here if needed */}
       </div>
       <div className="flex items-center gap-3">
         <motion.div
-          onClick={() => setEnabled(!enabled)}
-          className={
-            "relative w-14 h-7 rounded-full cursor-pointer flex items-center p-1 transition-colors duration-300 ease-in-out shadow-inner border border-sky-400"
-          } // Off state border
-          whileTap={{ scale: 0.95 }}
+          onClick={() => !disabled && setEnabled(!enabled)}
+          className={`relative w-14 h-7 rounded-full flex items-center p-1 transition-colors duration-300 ease-in-out shadow-inner
+                      ${
+                        disabled
+                          ? theme.disabledBg + " border " + theme.disabledBorder
+                          : enabled
+                          ? `bg-gradient-to-r from-${theme.accentSecondary}-500 to-${theme.accentSecondary}-600 border border-${theme.accentSecondary}-400`
+                          : `${theme.inputBg} border border-slate-600 hover:bg-slate-600`
+                      }
+                      ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+          whileTap={!disabled ? { scale: 0.95 } : {}}
         >
           <motion.div
             className="w-5 h-5 bg-white rounded-full shadow-lg"
@@ -172,9 +209,13 @@ const DarkGlowToggle = ({ enabled, setEnabled, label }) => {
         </motion.div>
         <span
           className={`text-xs font-medium ${
-            enabled ? `text-${theme.accentSecondary}-300` : theme.textMuted
-          }`}
+            enabled && !disabled
+              ? `text-${theme.accentSecondary}-300`
+              : theme.textMuted
+          } ${disabled ? "!text-slate-600" : ""}`}
         >
+          {" "}
+          {/* Overwrite muted if disabled */}
           {enabled ? "Enabled" : "Disabled"}
         </span>
       </div>
@@ -182,20 +223,30 @@ const DarkGlowToggle = ({ enabled, setEnabled, label }) => {
   );
 };
 
-// --- Main PayloadPage Component ---
 export default function PayloadPage({
   onBack,
   onContinue,
   onSave,
   initialPayload = {},
+  isPresetMode = false,
 }) {
   const [data, setData] = useState(initialPayload.data ?? "");
   const [labels, setLabels] = useState(initialPayload.labels ?? "");
   const [saveAfter, setSaveAfter] = useState(initialPayload.saveAfter ?? false);
   const [filename, setFilename] = useState(initialPayload.filename ?? "");
 
+  useEffect(() => {
+    setData(initialPayload.data ?? "");
+    setLabels(initialPayload.labels ?? "");
+    setSaveAfter(initialPayload.saveAfter ?? false);
+    setFilename(initialPayload.filename ?? "");
+  }, [initialPayload]);
+
   const handleFileUpload = (e) => {
-    /* ... (functionality remains same) ... */
+    if (isPresetMode) {
+      alert("File upload is disabled in preset mode.");
+      return;
+    }
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -205,17 +256,12 @@ export default function PayloadPage({
         if (!txt) throw new Error("File is empty or unreadable.");
         const lines = txt.split(/\r?\n/).filter(Boolean);
         if (lines.length === 0) throw new Error("No data lines found in file.");
-
         const features = lines.map((l) => {
           const cols = l.split(",").map((s) => s.trim());
           if (cols.length < 2 && lines.length > 1)
-            throw new Error(
-              `Line "${l}" has fewer than 2 columns. Ensure data and label are present.`
-            );
+            throw new Error(`Line "${l}" has fewer than 2 columns.`);
           if (cols.length === 1 && lines.length > 1)
-            throw new Error(
-              `Line "${l}" seems to have only one value. Did you mean to have features and a label?`
-            );
+            throw new Error(`Line "${l}" seems to have only one value.`);
           return cols.slice(0, -1).join(",");
         });
         const lbls = lines.map((l) => {
@@ -227,26 +273,23 @@ export default function PayloadPage({
       } catch (error) {
         console.error("Error processing file:", error);
         alert(
-          `Error processing file: ${error.message}. Please ensure the CSV has features in the initial columns and labels in the last column.`
+          `Error processing file: ${error.message}. Please ensure CSV has features, then label in last column. No headers.`
         );
       }
     };
-    reader.onerror = () => {
-      alert("Error reading file.");
-    };
+    reader.onerror = () => alert("Error reading file.");
     reader.readAsText(file);
     if (e.target) e.target.value = null;
   };
 
   useEffect(() => {
-    /* ... (functionality remains same) ... */
-    if (onSave) {
+    if (onSave && !isPresetMode) {
       onSave({ data, labels, saveAfter, filename });
     }
-  }, [data, labels, saveAfter, filename, onSave]);
+  }, [data, labels, saveAfter, filename, onSave, isPresetMode]);
 
   const pageVariants = {
-    /* ... (remains same) ... */ initial: { opacity: 0, x: "-5%" },
+    initial: { opacity: 0, x: "-5%" },
     animate: {
       opacity: 1,
       x: "0%",
@@ -259,19 +302,19 @@ export default function PayloadPage({
     },
   };
   const cardContainerVariants = {
-    /* ... (remains same) ... */ hidden: { opacity: 0 },
+    hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: { staggerChildren: 0.15, delayChildren: 0.2 },
+      transition: { staggerChildren: 0.12, delayChildren: 0.15 },
     },
   };
   const cardItemVariants = {
-    /* ... (remains same) ... */ hidden: { opacity: 0, y: 30, scale: 0.95 },
+    hidden: { opacity: 0, y: 25, scale: 0.97 },
     show: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { type: "spring", stiffness: 250, damping: 25 },
+      transition: { type: "spring", stiffness: 260, damping: 24 },
     },
   };
 
@@ -283,7 +326,6 @@ export default function PayloadPage({
       animate="animate"
       exit="exit"
     >
-      {/* Header (remains same) */}
       <div
         className={`sticky top-0 ${theme.bg} bg-opacity-80 backdrop-blur-md z-20 px-6 py-3.5 border-b ${theme.divider} flex items-center justify-between shadow-sm`}
       >
@@ -293,7 +335,8 @@ export default function PayloadPage({
           whileHover={{ x: -2 }}
           whileTap={{ scale: 0.95 }}
         >
-          <ArrowLeftCircle size={18} /> Back to Settings
+          {" "}
+          <ArrowLeftCircle size={18} /> Back to Settings{" "}
         </motion.button>
         <h1
           className={`text-lg font-semibold ${theme.textPrimary} absolute left-1/2 -translate-x-1/2`}
@@ -309,76 +352,94 @@ export default function PayloadPage({
         initial="hidden"
         animate="show"
       >
-        {/* Grid for two main content cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-start">
-          {/* CARD 1: Data & Labels Input (Manual Paste + CSV Upload) */}
+        {isPresetMode && (
+          <motion.div
+            variants={cardItemVariants} // Also animate this banner
+            className={`lg:col-span-2 mb-6 p-3.5 rounded-lg bg-${theme.accent}-800/30 border border-${theme.accent}-700 text-${theme.accent}-200 text-sm flex items-center gap-2 shadow-md`}
+          >
+            <Lock size={16} /> Preset data loaded. Manual data input and file
+            upload are disabled.
+          </motion.div>
+        )}
+        {/* Grid will be fully disabled by pointer-events if isPresetMode */}
+        <div
+          className={`grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-start ${
+            isPresetMode ? "opacity-60 pointer-events-none" : ""
+          }`}
+        >
           <motion.section
             variants={cardItemVariants}
-            className={`p-6 sm:p-8 rounded-2xl ${theme.cardAlt} border ${theme.divider} shadow-2xl flex flex-col space-y-5`} // Unified space-y
+            className={`p-6 sm:p-8 rounded-2xl ${theme.cardAlt} border ${theme.divider} shadow-2xl flex flex-col space-y-5`}
           >
             <div className="flex items-center gap-2 mb-1">
-              <FileText size={24} className={`text-${theme.accent}-400`} />
+              <FileText size={24} className={`text-${theme.accent}-400`} />{" "}
               <h2 className={`text-xl font-semibold ${theme.textPrimary}`}>
                 Input Features & Labels
               </h2>
             </div>
             <DarkFloatTextarea
               id="data-textarea"
-              label="Feature Data (CSV rows, no labels)"
+              label="Feature Data (CSV rows, no header/labels)"
               value={data}
               setValue={setData}
-              rows={3}
+              disabled={isPresetMode}
             />
             <p className={`text-xs ${theme.textMuted} -mt-3 ml-1`}>
-              One sample/line, comma-separated values.
-            </p>{" "}
-            {/* Adjusted margin */}
+              One sample per line, comma-separated values.
+            </p>
             <DarkFloatInput
               id="labels-input"
-              label="Labels (comma-separated)"
+              label="Labels (comma-separated, single line)"
               value={labels}
               setValue={setLabels}
               className="mt-1"
+              disabled={isPresetMode}
             />
             <p className={`text-xs ${theme.textMuted} -mt-3 ml-1`}>
-              Single line, matching data sample count.
+              Order must match data samples. No header.
             </p>
             <div className="flex items-center gap-4 pt-3">
               {" "}
-              {/* OR Divider */}
-              <div className={`h-px flex-grow ${theme.divider}`}></div>
-              <span className={`${theme.textMuted} text-sm`}>OR</span>
-              <div className={`h-px flex-grow ${theme.divider}`}></div>
+              <div className={`h-px flex-grow ${theme.divider}`}></div>{" "}
+              <span className={`${theme.textMuted} text-sm`}>OR</span>{" "}
+              <div className={`h-px flex-grow ${theme.divider}`}></div>{" "}
             </div>
-            <motion.label // CSV Upload Button
+            <motion.label
               htmlFor="csvUpload"
-              className={`w-full inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-lg bg-gradient-to-r from-${theme.accent}-600 to-${theme.accent}-500 ${theme.textPrimary} 
-                          font-medium cursor-pointer shadow-lg bg-emerald hover:from-${theme.accent}-500 hover:to-${theme.accent}-400 transition-all duration-200 ease-out transform hover:scale-[1.02]`}
-              whileTap={{ scale: 0.98 }}
+              className={`w-full inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-lg bg-gradient-to-r from-${
+                theme.accent
+              }-600 to-${theme.accent}-500 ${
+                theme.textPrimary
+              } font-medium shadow-lg 
+                          ${
+                            isPresetMode
+                              ? "opacity-50 cursor-not-allowed !from-slate-600 !to-slate-500"
+                              : `cursor-pointer hover:from-${theme.accent}-500 hover:to-${theme.accent}-400 transition-all duration-200 ease-out transform hover:scale-[1.02]`
+                          }`}
+              whileTap={!isPresetMode ? { scale: 0.98 } : {}}
             >
-              <UploadCloud size={20} />
-              Upload CSV File
+              <UploadCloud size={20} /> Upload CSV File
               <input
                 id="csvUpload"
                 type="file"
                 accept=".csv,.txt"
                 onChange={handleFileUpload}
                 className="hidden"
+                disabled={isPresetMode}
               />
             </motion.label>
             <p className={`text-xs ${theme.textMuted} text-center -mt-3`}>
-              CSV: features in initial columns, label in the last column.
+              CSV format: features in initial columns, label in the last column.
+              No headers.
             </p>
           </motion.section>
 
-          {/* CARD 2: Model Saving Options */}
           <motion.section
             variants={cardItemVariants}
-            className={`p-6 sm:p-8 rounded-2xl ${theme.cardAlt} border ${theme.divider} shadow-2xl flex flex-col space-y-5`} // Unified space-y
+            className={`p-6 sm:p-8 rounded-2xl ${theme.cardAlt} border ${theme.divider} shadow-2xl flex flex-col space-y-6`}
           >
             <div className="flex items-center gap-2 mb-1">
               <Save size={20} className={`text-${theme.accentSecondary}-400`} />{" "}
-              {/* Changed Icon size */}
               <h2 className={`text-xl font-semibold ${theme.textPrimary}`}>
                 Model Saving Options
               </h2>
@@ -387,35 +448,49 @@ export default function PayloadPage({
               enabled={saveAfter}
               setEnabled={setSaveAfter}
               label="Save Model After Training"
+              disabled={isPresetMode}
             />
             <AnimatePresence>
               {saveAfter && (
                 <motion.div
                   key="filename-input-motion"
                   initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                  animate={{ opacity: 1, height: "auto", marginTop: "0.5rem" }}
+                  animate={{ opacity: 1, height: "auto", marginTop: "0.75rem" }}
                   exit={{ opacity: 0, height: 0, marginTop: 0 }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="overflow-hidden" // Added for smoother animation
+                  className="overflow-hidden"
                 >
                   <DarkFloatInput
                     id="filename"
-                    label="Filename" // Simpler label
+                    label="Filename (e.g., my_model)"
                     value={filename}
                     setValue={setFilename}
-                    className="mt-2" // Margin for when it appears
+                    className="mt-2"
+                    disabled={isPresetMode || !saveAfter}
                   />
                   <p className={`text-xs ${theme.textMuted} mt-1 ml-1`}>
-                    No extension. Saved in project's /models folder.
+                    No extension. Saved in project's designated /models folder.
                   </p>
                 </motion.div>
               )}
             </AnimatePresence>
+            {isPresetMode &&
+              filename && ( // Use local state 'filename' for consistency
+                <div className="mt-4 pt-4 border-t border-slate-700">
+                  <p className={`text-sm font-medium ${theme.textPrimary}`}>
+                    Preset Model Filename:
+                  </p>
+                  <p
+                    className={`text-sm ${theme.textMuted} font-mono bg-slate-700/50 px-2 py-1 rounded inline-block mt-1`}
+                  >
+                    {filename}.npz
+                  </p>
+                </div>
+              )}
           </motion.section>
         </div>
       </motion.div>
 
-      {/* Navigation Buttons (remains same) */}
       <div
         className={`sticky bottom-0 w-full px-6 py-3.5 ${theme.bg} border-t ${theme.divider} flex justify-end gap-4 z-20 mt-auto shadow-top-lg`}
       >
@@ -433,7 +508,7 @@ export default function PayloadPage({
         </motion.button>
         <motion.button
           onClick={() => {
-            if (!data.trim() || !labels.trim()) {
+            if (!isPresetMode && (!data.trim() || !labels.trim())) {
               alert(
                 "Please provide both feature data and labels, or upload a CSV file."
               );

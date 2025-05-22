@@ -1,7 +1,7 @@
 """network.py - simple vectorized MLP (fixed gradients)
 ========================================================
 This version restores stable training for binary (sigmoid + BCE)
-**and** multiclass (softmax + CE) while keeping full-batch vectorization.
+and multiclass (softmax + CE) while keeping full-batch vectorization.
 All shapes are kept consistent so loss/accuracy metrics behave.
 
 Quick checklist
