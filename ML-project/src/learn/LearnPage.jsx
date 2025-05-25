@@ -4,6 +4,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ScrollToPlugin } from "gsap/ScrollToPlugin";
 import { motion, AnimatePresence } from "framer-motion";
+import lossgraphscreenshot from "../assets/lossgraphscreenshot.png";
 import { useNavigate, useLocation } from "react-router-dom"; // Added for navbar
 import {
   Layers,
@@ -824,7 +825,7 @@ const LearnPage = () => {
             </p>
             <div className="content-item p-4 bg-slate-800/70 rounded-md shadow-lg border border-slate-700/50 max-w-xl mx-auto">
               <img
-                src="https://placehold.co/800x400/1e293b/94a3b8?text=Animated+Loss/Accuracy+Chart"
+                src={lossgraphscreenshot}
                 alt="Training Visualization Example"
                 className="rounded w-full h-auto object-cover"
               />
